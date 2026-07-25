@@ -6,8 +6,11 @@ copy-pasted. Maths picked up on the way, driven by need rather than study.
 **Rule for the whole project:** write the slow, obviously-correct version first. Keep it.
 Every fast version must be verified against it.
 
-**Target platform:** Go 1.26, linux/arm64. No PEXT, no GFNI, no SIMD until Go 1.27.
-Everything portable and scalar. This is a constraint, not a compromise.
+**Platform:** developed on Go 1.26 / linux/arm64, but intended to run competitively on
+amd64 too. The core is portable scalar `uint64` — no PEXT, no GFNI, no SIMD. Any
+architecture-specific path is an *optional accelerator* behind a build tag, must be a
+drop-in replacement for a portable function that already exists and is already tested,
+and must be justified by a benchmark. Realistically only NNUE inference will qualify.
 
 ---
 
