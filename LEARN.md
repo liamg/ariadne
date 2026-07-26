@@ -37,11 +37,11 @@ Bookmark these now; they're referenced throughout.
 ## Phase 0 — Primitives
 
 - [x] Square indexing: 0–63, rank/file conversion, algebraic notation both ways
-- [ ] `Bitboard uint64` type: set/clear/test a square
-- [ ] Pretty-print a bitboard as an 8×8 grid (you will use this constantly)
-- [ ] Learn `math/bits`: `OnesCount64`, `TrailingZeros64`, `LeadingZeros64`
-- [ ] Iterate set bits: `for bb != 0 { sq := bits.TrailingZeros64(bb); bb &= bb - 1 }`
-- [ ] Shift helpers with file-wrap masking (north, south, east, west, diagonals)
+- [x] `Bitboard uint64` type: set/clear/test a square
+- [x] Pretty-print a bitboard as an 8×8 grid (you will use this constantly)
+- [x] Learn `math/bits`: `OnesCount64`, `TrailingZeros64`, `LeadingZeros64`
+- [x] Iterate set bits: `for bb != 0 { sq := bits.TrailingZeros64(bb); bb &= bb - 1 }`
+- [x] Shift helpers with file-wrap masking (north, south, east, west, diagonals)
 
 **Maths — sets as bits.** A 64-bit integer is 64 yes/no answers. Treat it as "which squares
 are in this set" and the operators become set theory: `|` is union, `&` is intersection,
