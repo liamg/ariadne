@@ -36,12 +36,12 @@ Bookmark these now; they're referenced throughout.
 
 ## Phase 0 — Primitives
 
-- [ ] Square indexing: 0–63, rank/file conversion, algebraic notation both ways
-- [ ] `Bitboard uint64` type: set/clear/test a square
-- [ ] Pretty-print a bitboard as an 8×8 grid (you will use this constantly)
-- [ ] Learn `math/bits`: `OnesCount64`, `TrailingZeros64`, `LeadingZeros64`
-- [ ] Iterate set bits: `for bb != 0 { sq := bits.TrailingZeros64(bb); bb &= bb - 1 }`
-- [ ] Shift helpers with file-wrap masking (north, south, east, west, diagonals)
+- [x] Square indexing: 0–63, rank/file conversion, algebraic notation both ways
+- [x] `Bitboard uint64` type: set/clear/test a square
+- [x] Pretty-print a bitboard as an 8×8 grid (you will use this constantly)
+- [x] Learn `math/bits`: `OnesCount64`, `TrailingZeros64`, `LeadingZeros64`
+- [x] Iterate set bits: `for bb != 0 { sq := bits.TrailingZeros64(bb); bb &= bb - 1 }`
+- [x] Shift helpers with file-wrap masking (north, south, east, west, diagonals)
 
 **Maths — sets as bits.** A 64-bit integer is 64 yes/no answers. Treat it as "which squares
 are in this set" and the operators become set theory: `|` is union, `&` is intersection,
@@ -54,6 +54,7 @@ lowest set bit. Subtracting 1 flips the lowest 1 to 0 and turns every 0 below it
 once and it's obvious forever.
 
 **Resources**
+
 - [Bitboards](https://www.chessprogramming.org/Bitboards) — CPW overview
 - [General Setwise Operations](https://www.chessprogramming.org/General_Setwise_Operations) —
   the complete catalogue of bit tricks. Skim now, return often.
@@ -91,6 +92,7 @@ the right constant and your scattered bits land where you want them. Nobody can 
 that constant, so you guess randomly until one works.
 
 **Resources**
+
 - [Magic Bitboards](https://www.chessprogramming.org/Magic_Bitboards) — the reference page
 - [Looking for Magics](https://www.chessprogramming.org/Looking_for_Magics) — Tord Romstad's
   original search method, including the `rand & rand & rand` trick
@@ -115,6 +117,7 @@ that constant, so you guess randomly until one works.
 (6 bits), flags (4 bits) fits in a `uint16`.
 
 **Resources**
+
 - [Forsyth-Edwards Notation](https://www.chessprogramming.org/Forsyth-Edwards_Notation) — FEN spec
 - [Legal Move](https://www.chessprogramming.org/Legal_Move) and
   [Pin](https://www.chessprogramming.org/Pin) — the cases that bite
@@ -136,6 +139,7 @@ differs, play that move, repeat one level down. You'll land on the exact broken 
 a few steps. This is a binary search and it never fails.
 
 **Resources**
+
 - [Perft](https://www.chessprogramming.org/Perft) and
   [Perft Results](https://www.chessprogramming.org/Perft_Results) — the standard positions
   and their exact node counts. These numbers are your test suite.
@@ -171,6 +175,7 @@ new one", and unmaking is *the identical operation*. No undo log needed. (Formal
 group where every element is its own inverse; you don't need the vocabulary, just the fact.)
 
 **Resources**
+
 - [Alpha-Beta](https://www.chessprogramming.org/Alpha-Beta) and
   [Negamax](https://www.chessprogramming.org/Negamax)
 - [Quiescence Search](https://www.chessprogramming.org/Quiescence_Search) — skip this and
@@ -205,6 +210,7 @@ one-layer neural network with 768 binary inputs. Keep this in mind — Phase 9 i
 idea with a hidden layer bolted on.
 
 **Resources**
+
 - [Simplified Evaluation Function](https://www.chessprogramming.org/Simplified_Evaluation_Function)
   — a complete, sane starting PSQT set with values you can type in today
 - [Tapered Eval](https://www.chessprogramming.org/Tapered_Eval)
@@ -287,6 +293,7 @@ dragging it down. This is also the real cost of engine development: tens of thou
 games per change, forever. Budget for it.
 
 **Resources**
+
 - [fastchess](https://github.com/Disservin/fastchess) — the match runner (replaced
   cutechess-cli; also see its [man page](https://github.com/Disservin/fastchess/blob/master/man.md))
 - [Sequential Probability Ratio Test](https://www.chessprogramming.org/Sequential_Probability_Ratio_Test)
@@ -323,6 +330,7 @@ win far more from extra depth than they lose from occasional blindness. Which is
 why every one of them needs SPRT rather than reasoning.
 
 **Resources**
+
 - [Null Move Pruning](https://www.chessprogramming.org/Null_Move_Pruning)
 - [Late Move Reductions](https://www.chessprogramming.org/Late_Move_Reductions)
 - [Principal Variation Search](https://www.chessprogramming.org/Principal_Variation_Search)
@@ -375,6 +383,7 @@ testing each weight individually. It's the chain rule from calculus, applied eff
 it once by hand on the toy network so it stops being magic, then let the library do it forever.
 
 **Resources**
+
 - [3Blue1Brown — Neural Networks](https://www.3blue1brown.com/topics/neural-networks) —
   four videos, visual, the best intuition-builder that exists. Start here.
 - [Karpathy — Neural Networks: Zero to Hero](https://karpathy.ai/zero-to-hero.html) —
@@ -416,6 +425,7 @@ This is also why SIMD matters here and nowhere else in the engine.
 accurately can easily produce a *weaker* engine. Only SPRT decides.
 
 **Resources**
+
 - [NNUE — the official document](https://github.com/official-stockfish/nnue-pytorch/blob/master/docs/nnue.md)
   ([readable HTML version](https://official-stockfish.github.io/docs/nnue-pytorch-wiki/docs/nnue.html))
   — comprehensive, from architecture through quantisation to SIMD implementation. The single
@@ -457,6 +467,7 @@ store all the bit-0s in one `uint64`, all the bit-1s in another, and so on. Then
 ripple-carry adder in ~8 instructions increments all 64 counters at once.
 
 **Resources**
+
 - Nothing to link. That's the point.
 
 ---
