@@ -66,7 +66,7 @@ once and it's obvious forever.
 
 ## Phase 1 — Attacks
 
-- [ ] Precomputed knight and king attack tables (`[64]Bitboard`)
+- [x] Precomputed knight and king attack tables (`[64]Bitboard`)
 - [ ] Pawn pushes, double pushes, captures, en passant targets
 - [ ] `slowRayAttacks(sq, occupancy, isRook)` — a loop walking outward until blocked.
       Slow, obvious, correct. **Never delete this.**
