@@ -30,3 +30,16 @@ func computeKnightAttacks() [64]Bitboard {
 	}
 	return attacks
 }
+
+// pawnAttacks is a precomputed table of pawn attacks for each square on the board, for both white and black pawns.
+var pawnAttacks = computePawnAttacks()
+
+func computePawnAttacks() [2][64]Bitboard {
+	var attacks [2][64]Bitboard
+	for square := A1; square <= H8; square++ {
+		bb := square.Bitboard()
+		attacks[White][square] = bb.NorthEast() | bb.NorthWest()
+		attacks[Black][square] = bb.SouthEast() | bb.SouthWest()
+	}
+	return attacks
+}

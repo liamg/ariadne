@@ -7,8 +7,8 @@ type Position struct {
 	byColour [2]Bitboard // Bitboards for each color (White, Black)
 }
 
-func StartingPosition() Position {
-	return Position{
+func StartingPosition() *Position {
+	return &Position{
 		byType: [7]Bitboard{
 			0x0000000000000000,
 			0x00FF00000000FF00, // Pawns
@@ -25,7 +25,7 @@ func StartingPosition() Position {
 	}
 }
 
-func (p Position) String() string {
+func (p *Position) String() string {
 	var sb strings.Builder
 	sb.WriteString("\n")
 	for rank := Rank8; rank >= Rank1; rank-- {
@@ -36,10 +36,10 @@ func (p Position) String() string {
 			var piece Piece
 			for pieceType := PieceTypePawn; pieceType <= PieceTypeKing; pieceType++ {
 				if p.byType[pieceType].Has(sq) {
-					if p.byColour[ColourBlack].Has(sq) {
-						piece = NewPiece(ColourBlack, pieceType)
+					if p.byColour[Black].Has(sq) {
+						piece = NewPiece(Black, pieceType)
 					} else {
-						piece = NewPiece(ColourWhite, pieceType)
+						piece = NewPiece(White, pieceType)
 					}
 					break
 				}
@@ -55,4 +55,16 @@ func (p Position) String() string {
 	}
 	sb.WriteString("  a b c d e f g h \n")
 	return sb.String()
+}
+
+func (p *Position) PiecesByColour(colour Colour) Bitboard {
+	return p.byColour[colour]
+}
+
+func (p *Position) Pieces(colour Colour, pieceType PieceType) Bitboard {
+	return p.byType[pieceType] & p.byColour[colour]
+}
+
+func (p *Position) Occupancy() Bitboard {
+	return p.byColour[White] | p.byColour[Black]
 }

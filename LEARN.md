@@ -67,7 +67,7 @@ once and it's obvious forever.
 ## Phase 1 — Attacks
 
 - [x] Precomputed knight and king attack tables (`[64]Bitboard`)
-- [ ] Pawn pushes, double pushes, captures, en passant targets
+- [x] Pawn pushes, double pushes, captures, en passant targets
 - [ ] `slowRayAttacks(sq, occupancy, isRook)` — a loop walking outward until blocked.
       Slow, obvious, correct. **Never delete this.**
 - [ ] Relevant-occupancy masks: file+rank (or diagonals) minus the piece's own square,

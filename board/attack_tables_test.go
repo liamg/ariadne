@@ -115,3 +115,52 @@ func TestKnightAttacks(t *testing.T) {
 		}
 	}
 }
+
+func TestPawnAttackCount(t *testing.T) {
+	var whiteCount int
+	var blackCount int
+	for square := A1; square <= H8; square++ {
+		whiteCount += pawnAttacks[White][square].Count()
+		blackCount += pawnAttacks[Black][square].Count()
+	}
+	if whiteCount != 98 {
+		t.Errorf("Expected 98 white pawn attacks, got %d", whiteCount)
+	}
+	if blackCount != 98 {
+		t.Errorf("Expected 98 black pawn attacks, got %d", blackCount)
+	}
+}
+
+func TestWhitePawnAttacks(t *testing.T) {
+	for sq := A1; sq <= H8; sq++ {
+		expected := EmptyBitboard
+		file, rank := sq.File(), sq.Rank()
+
+		if a, err := SquareFromFileAndRank(file+1, rank+1); err == nil {
+			expected = expected.Set(a)
+		}
+		if a, err := SquareFromFileAndRank(file-1, rank+1); err == nil {
+			expected = expected.Set(a)
+		}
+		if pawnAttacks[White][sq] != expected {
+			t.Errorf("White pawn attacks for %s do not match expected. Got: %s, Expected: %s", sq, pawnAttacks[White][sq], expected)
+		}
+	}
+}
+
+func TestBlackPawnAttacks(t *testing.T) {
+	for sq := A1; sq <= H8; sq++ {
+		expected := EmptyBitboard
+		file, rank := sq.File(), sq.Rank()
+
+		if a, err := SquareFromFileAndRank(file+1, rank-1); err == nil {
+			expected = expected.Set(a)
+		}
+		if a, err := SquareFromFileAndRank(file-1, rank-1); err == nil {
+			expected = expected.Set(a)
+		}
+		if pawnAttacks[Black][sq] != expected {
+			t.Errorf("Black pawn attacks for %s do not match expected. Got: %s, Expected: %s", sq, pawnAttacks[Black][sq], expected)
+		}
+	}
+}
