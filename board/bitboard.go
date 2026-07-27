@@ -36,6 +36,14 @@ func (b Bitboard) Count() int {
 	return bits.OnesCount64(uint64(b))
 }
 
+func BitboardFromSquares(squares ...Square) Bitboard {
+	var b Bitboard
+	for _, sq := range squares {
+		b = b.Set(sq)
+	}
+	return b
+}
+
 // String returns a string representation of the bitboard, with 'x' for occupied squares and '.' for empty squares.
 func (b Bitboard) String() string {
 	var sb strings.Builder
