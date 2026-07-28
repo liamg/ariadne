@@ -39,15 +39,22 @@ func (p PieceType) String() string {
 type Colour uint8
 
 const (
-	ColourWhite Colour = iota
-	ColourBlack
+	White Colour = iota
+	Black
 )
 
 func (c Colour) String() string {
-	if c == ColourWhite {
+	if c == White {
 		return "w"
 	}
 	return "b"
+}
+
+func (c Colour) Opposite() Colour {
+	if c == White {
+		return Black
+	}
+	return White
 }
 
 // Piece encodes a piece type and a colour e.g. a black knight
@@ -72,7 +79,7 @@ func (p Piece) Type() PieceType {
 
 func (p Piece) String() string {
 	pt := p.Type().String()
-	if p.Colour() == ColourBlack {
+	if p.Colour() == Black {
 		return strings.ToLower(pt)
 	}
 	return pt

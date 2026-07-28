@@ -121,6 +121,14 @@ func ParseSquare(s string) (Square, error) {
 	return Square((file - 'a') + (rank-'1')*8), nil
 }
 
+func mustSquareFromFileAndRank(file File, rank Rank) Square {
+	sq, err := SquareFromFileAndRank(file, rank)
+	if err != nil {
+		panic(err)
+	}
+	return sq
+}
+
 func SquareFromFileAndRank(file File, rank Rank) (Square, error) {
 	if file < FileA || file > FileH || rank < Rank1 || rank > Rank8 {
 		return NoSquare, ErrInvalidSquare

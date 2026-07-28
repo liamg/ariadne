@@ -66,18 +66,18 @@ once and it's obvious forever.
 
 ## Phase 1 — Attacks
 
-- [ ] Precomputed knight and king attack tables (`[64]Bitboard`)
-- [ ] Pawn pushes, double pushes, captures, en passant targets
-- [ ] `slowRayAttacks(sq, occupancy, isRook)` — a loop walking outward until blocked.
+- [x] Precomputed knight and king attack tables (`[64]Bitboard`)
+- [x] Pawn pushes, double pushes, captures, en passant targets
+- [x] `slowRayAttacks(sq, occupancy, isRook)` — a loop walking outward until blocked.
       Slow, obvious, correct. **Never delete this.**
-- [ ] Relevant-occupancy masks: file+rank (or diagonals) minus the piece's own square,
+- [x] Relevant-occupancy masks: file+rank (or diagonals) minus the piece's own square,
       minus the last square of each ray
-- [ ] `scatter(index, mask)` — spread an n-bit index across a mask's set bits
-- [ ] Enumerate all 2^n occupancies for each square, compute true attacks with the slow version
-- [ ] **Brute-force the magics**: random sparse candidates (`rand & rand & rand`),
+- [x] `scatter(index, mask)` — spread an n-bit index across a mask's set bits
+- [x] Enumerate all 2^n occupancies for each square, compute true attacks with the slow version
+- [x] **Brute-force the magics**: random sparse candidates (`rand & rand & rand`),
       reject on destructive collision, keep what survives
-- [ ] Magic lookup: `table[sq][((occ & mask[sq]) * magic[sq]) >> shift[sq]]`
-- [ ] Assert magic output == slow output for all squares, all occupancies
+- [x] Magic lookup: `table[sq][((occ & mask[sq]) * magic[sq]) >> shift[sq]]`
+- [x] Assert magic output == slow output for all squares, all occupancies
 
 **Maths — counting possibilities.** If 10 squares can each be occupied or empty
 independently, there are 2×2×2… ten times = 2¹⁰ = 1024 possible arrangements. That's all

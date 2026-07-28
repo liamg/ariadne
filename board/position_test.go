@@ -4,7 +4,7 @@ import "testing"
 
 func TestPositionString(t *testing.T) {
 	tests := []struct {
-		pos      Position
+		pos      *Position
 		expected string
 	}{
 		{

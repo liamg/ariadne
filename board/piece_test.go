@@ -27,8 +27,8 @@ func TestColourString(t *testing.T) {
 		colour   Colour
 		expected string
 	}{
-		{ColourWhite, "w"},
-		{ColourBlack, "b"},
+		{White, "w"},
+		{Black, "b"},
 	}
 
 	for _, test := range tests {
@@ -43,8 +43,8 @@ func TestPieceRoundTrip(t *testing.T) {
 		colour    Colour
 		pieceType PieceType
 	}{
-		{ColourWhite, PieceTypePawn},
-		{ColourBlack, PieceTypeKnight},
+		{White, PieceTypePawn},
+		{Black, PieceTypeKnight},
 	}
 
 	for _, test := range tests {
@@ -63,18 +63,18 @@ func TestPieceString(t *testing.T) {
 		piece    Piece
 		expected string
 	}{
-		{NewPiece(ColourWhite, PieceTypePawn), "P"},
-		{NewPiece(ColourWhite, PieceTypeKnight), "N"},
-		{NewPiece(ColourWhite, PieceTypeBishop), "B"},
-		{NewPiece(ColourWhite, PieceTypeRook), "R"},
-		{NewPiece(ColourWhite, PieceTypeQueen), "Q"},
-		{NewPiece(ColourWhite, PieceTypeKing), "K"},
-		{NewPiece(ColourBlack, PieceTypePawn), "p"},
-		{NewPiece(ColourBlack, PieceTypeKnight), "n"},
-		{NewPiece(ColourBlack, PieceTypeBishop), "b"},
-		{NewPiece(ColourBlack, PieceTypeRook), "r"},
-		{NewPiece(ColourBlack, PieceTypeQueen), "q"},
-		{NewPiece(ColourBlack, PieceTypeKing), "k"},
+		{NewPiece(White, PieceTypePawn), "P"},
+		{NewPiece(White, PieceTypeKnight), "N"},
+		{NewPiece(White, PieceTypeBishop), "B"},
+		{NewPiece(White, PieceTypeRook), "R"},
+		{NewPiece(White, PieceTypeQueen), "Q"},
+		{NewPiece(White, PieceTypeKing), "K"},
+		{NewPiece(Black, PieceTypePawn), "p"},
+		{NewPiece(Black, PieceTypeKnight), "n"},
+		{NewPiece(Black, PieceTypeBishop), "b"},
+		{NewPiece(Black, PieceTypeRook), "r"},
+		{NewPiece(Black, PieceTypeQueen), "q"},
+		{NewPiece(Black, PieceTypeKing), "k"},
 	}
 
 	for _, test := range tests {
