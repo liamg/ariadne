@@ -105,13 +105,13 @@ that constant, so you guess randomly until one works.
 
 ## Phase 2 — Position & legality
 
-- [ ] `Position` struct: piece bitboards, side to move, castling rights, ep square, clocks
-- [ ] FEN parsing and generation
-- [ ] `Make(move)` / `Unmake(move)` with an undo stack
-- [ ] Pseudo-legal move generation for all pieces
-- [ ] Attack detection: `isSquareAttackedBy(sq, side)`
-- [ ] Legality: pinned pieces, evasions when in check, the en passant discovered-check edge case
-- [ ] Castling with all its conditions
+- [x] `Position` struct: piece bitboards, side to move, castling rights, ep square, clocks
+- [x] FEN parsing and generation
+- [x] `Make(move)` / `Unmake(move)` with an undo stack
+- [x] Pseudo-legal move generation for all pieces
+- [x] Attack detection: `isSquareAttackedBy(sq, side)`
+- [x] Legality: pinned pieces, evasions when in check, the en passant discovered-check edge case
+- [x] Castling with all its conditions
 
 **Maths:** none. This phase is pure care. Encode moves compactly — from (6 bits), to
 (6 bits), flags (4 bits) fits in a `uint16`.

@@ -164,7 +164,7 @@ const (
 
 func (f File) String() string {
 	if f < FileA || f > FileH {
-		return "?"
+		return fmt.Sprintf("?%d", f) // return the underlying value for debugging
 	}
 	return string('a' + rune(f))
 }
@@ -198,7 +198,7 @@ const (
 
 func (r Rank) String() string {
 	if r < Rank1 || r > Rank8 {
-		return "?"
+		return fmt.Sprintf("?%d", r) // return the underlying value for debugging
 	}
 	return string('1' + rune(r))
 }

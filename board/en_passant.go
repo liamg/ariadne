@@ -1,6 +1,6 @@
 package board
 
-// findEnPassantAttackers returns a bitboard of pawns of the given colour than
+// findEnPassantAttackers returns a bitboard of pawns of the given colour that
 // can legally capture en passant on the given en passant square.
 func findEnPassantAttackers(colour Colour, pawns Bitboard, epSquare Square) Bitboard {
 	if epSquare == NoSquare {

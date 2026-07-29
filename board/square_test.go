@@ -15,7 +15,7 @@ func TestRankString(t *testing.T) {
 		{Rank6, "6"},
 		{Rank7, "7"},
 		{Rank8, "8"},
-		{Rank(8), "?"},
+		{Rank(8), "?8"},
 	}
 
 	for _, test := range tests {
@@ -38,7 +38,7 @@ func TestFileString(t *testing.T) {
 		{FileF, "f"},
 		{FileG, "g"},
 		{FileH, "h"},
-		{File(8), "?"},
+		{File(8), "?8"},
 	}
 
 	for _, test := range tests {

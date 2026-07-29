@@ -1,6 +1,9 @@
 package board
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestPositionString(t *testing.T) {
 	tests := []struct {
@@ -27,5 +30,246 @@ func TestPositionString(t *testing.T) {
 		if str := test.pos.String(); str != test.expected {
 			t.Errorf("Expected position to have string representation:\n%s\nGot:\n%s", test.expected, str)
 		}
+		if err := test.pos.validateStateSlow(); err != nil {
+			t.Errorf("Position validation failed: %v", err)
+		}
+	}
+}
+
+func TestStateCorruptionIsDetected(t *testing.T) {
+	tests := []struct {
+		name        string
+		corruptFunc func() *Position
+		expectedErr string
+	}{
+		{
+			name: "piece missing from byType",
+			corruptFunc: func() *Position {
+				pos := StartingPosition()
+				pos.byType[King] = 0 // Corrupt the state by removing the kings from the piece type bitboard
+				return pos
+			},
+			expectedErr: "mailbox has piece not present in byType",
+		},
+		{
+			name: "piece missing from byColour",
+			corruptFunc: func() *Position {
+				pos := StartingPosition()
+				// remove piece from A1
+				pos.byColour[White] &= ^A1.Bitboard()
+				return pos
+			},
+			expectedErr: "mailbox has piece not present in byColour",
+		},
+		{
+			name: "multiple pieces in byType for a square",
+			corruptFunc: func() *Position {
+				pos := StartingPosition()
+				// Add a pawn to A1, which already has a rook
+				pos.byType[Pawn] |= A1.Bitboard()
+				return pos
+			},
+			expectedErr: "multiple pieces in byType for square",
+		},
+		{
+			name: "byType has value not in mailbox",
+			corruptFunc: func() *Position {
+				pos := EmptyPosition()
+				// Add a pawn to byType but not to mailbox
+				pos.byType[Pawn] |= A1.Bitboard()
+				return pos
+			},
+			expectedErr: "byType has piece not in mailbox, square: a1",
+		},
+		{
+			name: "byColour has value not in mailbox",
+			corruptFunc: func() *Position {
+				pos := EmptyPosition()
+				// Add a white piece to byColour but not to mailbox
+				pos.byColour[White] |= A1.Bitboard()
+				return pos
+			},
+			expectedErr: "byColour has piece not in mailbox, square: a1",
+		},
+		{
+			name: "both colours on same square",
+			corruptFunc: func() *Position {
+				pos := EmptyPosition()
+				pos.mailbox[A4] = WhitePawn
+				pos.byType[Pawn] = A4.Bitboard()
+				pos.byColour[White] |= A4.Bitboard()
+				pos.byColour[Black] |= A4.Bitboard()
+				return pos
+			},
+			expectedErr: "square has pieces of both colours, square: a4",
+		},
+		{
+			name: "byType[0] non-empty",
+			corruptFunc: func() *Position {
+				pos := EmptyPosition()
+				pos.byType[0] |= A4.Bitboard() // Corrupt the state by adding a square to the NoPieceType bitboard
+				return pos
+			},
+			expectedErr: "byType has NoPieceType set",
+		},
+		{
+			name: "invalid castling rights",
+			corruptFunc: func() *Position {
+				pos := EmptyPosition()
+				pos.state.castlingRights = 0x10 // Corrupt the state by setting an invalid castling rights value
+				return pos
+			},
+			expectedErr: "invalid castling rights",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			pos := test.corruptFunc()
+			if err := pos.validateStateSlow(); err == nil {
+				t.Errorf("Expected position validation to fail due to corrupted state, but it passed")
+			} else if !strings.Contains(err.Error(), test.expectedErr) && test.expectedErr != "" {
+				t.Errorf("Expected error to contain '%s', but got: %v", test.expectedErr, err)
+			}
+		})
+	}
+}
+
+func TestInCheck(t *testing.T) {
+	// Ray generation is covered by TestIsSquareAttacked. These cases exist to pin
+	// down what InCheck adds on top of it: that it looks up the king of the colour
+	// it was asked about, and asks whether the *opposing* colour attacks it. Both
+	// colours are asserted on every position, so a hardcoded colour cannot pass.
+	tests := []struct {
+		name  string
+		fen   string
+		white bool
+		black bool
+	}{
+		{"neither king in check", "7k/8/8/8/8/8/8/K7 w - - 0 1", false, false},
+
+		// Only one side is in check, so using the wrong king flips the answer.
+		{"white in check from a rook", "4r2k/8/8/8/8/8/8/4K3 w - - 0 1", true, false},
+		{"white in check from a knight", "7k/8/8/8/8/5n2/8/4K3 w - - 0 1", true, false},
+		{"white in check from a queen on a diagonal", "7k/8/8/q7/8/8/8/4K3 w - - 0 1", true, false},
+		{"black in check from a pawn", "8/8/8/4k3/3P4/8/8/4K3 b - - 0 1", false, true},
+
+		// The rook's ray from e1 stops on white's own knight, so it never reaches e8.
+		{"check blocked by an own piece", "4r2k/8/8/8/8/8/4N3/4K3 w - - 0 1", false, false},
+
+		// White's own rook bears on e1 along the first rank. Asking about the wrong
+		// colour - c rather than c.Opposite() - reports this as a check.
+		{"own rook does not check its king", "7k/8/8/8/8/8/8/R3K3 w - - 0 1", false, false},
+
+		// Illegal in a real game, but move generation depends on this answer to stop
+		// the kings from moving next to each other.
+		{"adjacent kings check each other", "8/8/8/8/8/8/4k3/4K3 w - - 0 1", true, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			pos, err := ParseFEN(test.fen)
+			if err != nil {
+				t.Fatalf("Failed to parse FEN: %v", err)
+			}
+
+			if got := pos.InCheck(White); got != test.white {
+				t.Errorf("InCheck(White) = %v, want %v", got, test.white)
+			}
+			if got := pos.InCheck(Black); got != test.black {
+				t.Errorf("InCheck(Black) = %v, want %v", got, test.black)
+			}
+		})
+	}
+}
+
+func TestValidateEnPassantSquare(t *testing.T) {
+	// The en passant target sits behind the pawn that made the double push, so the
+	// pawn is always on the far side of the target from where it started: one rank
+	// north of a rank 3 target, one rank south of a rank 6 target. It is never on
+	// the square it pushed from.
+	tests := []struct {
+		name        string
+		fen         string
+		expectedErr string // empty means the position is expected to validate
+	}{
+		{
+			name: "white double push leaves its pawn north of the target",
+			fen:  "7k/8/8/8/2P5/8/8/K7 b - c3 0 1",
+		},
+		{
+			name: "black double push leaves its pawn south of the target",
+			fen:  "7k/8/8/2p5/8/8/8/K7 w - c6 0 1",
+		},
+
+		// A pawn sitting on the square it pushed *from* rather than the one it pushed
+		// to. These two are the positions an inverted north/south check accepts.
+		{
+			name:        "white pawn still on its starting square",
+			fen:         "7k/8/8/8/8/8/2P5/K7 b - c3 0 1",
+			expectedErr: "there is no white pawn on c4",
+		},
+		{
+			name:        "black pawn still on its starting square",
+			fen:         "7k/2p5/8/8/8/8/8/K7 w - c6 0 1",
+			expectedErr: "there is no black pawn on c5",
+		},
+
+		{
+			name:        "no pawn anywhere near the target",
+			fen:         "7k/8/8/8/8/8/8/K7 b - c3 0 1",
+			expectedErr: "there is no white pawn on c4",
+		},
+		{
+			// occupancy alone is not enough, the piece has to be a pawn of the colour
+			// that could have made the push
+			name:        "wrong coloured pawn behind the target",
+			fen:         "7k/8/8/8/2p5/8/8/K7 b - c3 0 1",
+			expectedErr: "there is no white pawn on c4",
+		},
+		{
+			// only a double push creates a target, so only ranks 3 and 6 are reachable
+			name:        "target square on an impossible rank",
+			fen:         "7k/8/8/8/8/8/8/K7 b - c4 0 1",
+			expectedErr: "is not on rank 3 or 6",
+		},
+		{
+			// the pawn passed over the target square, so nothing can be standing on it
+			name:        "piece standing on the target square",
+			fen:         "7k/8/8/8/2P5/2n5/8/K7 b - c3 0 1",
+			expectedErr: "there is a piece on that square",
+		},
+		{
+			// the pawn that pushed vacated this square, so it cannot still be occupied
+			name:        "piece left on the square the pawn pushed from",
+			fen:         "7k/8/8/8/2P5/8/2P5/K7 b - c3 0 1",
+			expectedErr: "there is a piece on c2",
+		},
+		{
+			// a rank 3 target can only come from a white double push, which means it is
+			// black's turn - white to move implies a black push and a rank 6 target
+			name:        "target rank contradicts the side to move",
+			fen:         "7k/8/8/8/2P5/8/8/K7 w - c3 0 1",
+			expectedErr: "not on rank 6 when it is white's turn to move",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			pos, err := ParseFEN(test.fen)
+			if err != nil {
+				t.Fatalf("Failed to parse FEN: %v", err)
+			}
+
+			err = pos.Validate()
+			switch {
+			case test.expectedErr == "" && err != nil:
+				t.Errorf("Expected position to validate, but got: %v", err)
+			case test.expectedErr != "" && err == nil:
+				t.Errorf("Expected validation to fail containing '%s', but it passed", test.expectedErr)
+			case test.expectedErr != "" && !strings.Contains(err.Error(), test.expectedErr):
+				t.Errorf("Expected error to contain '%s', but got: %v", test.expectedErr, err)
+			}
+		})
 	}
 }
