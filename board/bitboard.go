@@ -44,6 +44,18 @@ func BitboardFromSquares(squares ...Square) Bitboard {
 	return b
 }
 
+func (b Bitboard) EachSquareSlow(f func(sq Square)) {
+	e := b
+	var sq Square
+	for {
+		sq, e = e.PopSquare()
+		if sq == NoSquare {
+			break
+		}
+		f(sq)
+	}
+}
+
 // String returns a string representation of the bitboard, with 'x' for occupied squares and '.' for empty squares.
 func (b Bitboard) String() string {
 	var sb strings.Builder

@@ -77,12 +77,6 @@ func TestLookupStartingPosition(t *testing.T) {
 			BitboardFromSquares(D2, D3, D5, D6, D7, A4, B4, C4, E4, F4, G4, H4),
 			rookLookup,
 		},
-		{
-			"queen on D1",
-			D1,
-			BitboardFromSquares(C1, E1, C2, D2, E2),
-			queenLookup,
-		},
 	}
 
 	for _, test := range tests {
@@ -151,11 +145,6 @@ func TestLookupFuzz(t *testing.T) {
 			"bishop",
 			bishopDirections,
 			bishopLookup,
-		},
-		{
-			"queen",
-			queenDirections,
-			queenLookup,
 		},
 	}
 

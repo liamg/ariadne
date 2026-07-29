@@ -13,6 +13,7 @@ import (
 
 func main() {
 	start := time.Now()
+	fmt.Println("Generating magics...")
 	data, err := board.GenerateMagics()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error generating magics:", err)

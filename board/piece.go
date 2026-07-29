@@ -7,28 +7,44 @@ import "strings"
 type PieceType uint8
 
 const (
-	PieceTypeNone PieceType = iota
-	PieceTypePawn
-	PieceTypeKnight
-	PieceTypeBishop
-	PieceTypeRook
-	PieceTypeQueen
-	PieceTypeKing
+	NoPieceType PieceType = iota
+	Pawn
+	Knight
+	Bishop
+	Rook
+	Queen
+	King
+)
+
+var (
+	WhiteKing   = NewPiece(White, King)
+	BlackKing   = NewPiece(Black, King)
+	WhiteQueen  = NewPiece(White, Queen)
+	BlackQueen  = NewPiece(Black, Queen)
+	WhiteRook   = NewPiece(White, Rook)
+	BlackRook   = NewPiece(Black, Rook)
+	WhiteBishop = NewPiece(White, Bishop)
+	BlackBishop = NewPiece(Black, Bishop)
+	WhiteKnight = NewPiece(White, Knight)
+	BlackKnight = NewPiece(Black, Knight)
+	WhitePawn   = NewPiece(White, Pawn)
+	BlackPawn   = NewPiece(Black, Pawn)
+	NoPiece     = NewPiece(White, NoPieceType)
 )
 
 func (p PieceType) String() string {
 	switch p {
-	case PieceTypePawn:
+	case Pawn:
 		return "P"
-	case PieceTypeKnight:
+	case Knight:
 		return "N"
-	case PieceTypeBishop:
+	case Bishop:
 		return "B"
-	case PieceTypeRook:
+	case Rook:
 		return "R"
-	case PieceTypeQueen:
+	case Queen:
 		return "Q"
-	case PieceTypeKing:
+	case King:
 		return "K"
 	default:
 		return "?"
@@ -63,7 +79,7 @@ type Piece uint8
 
 // NewPiece creates a new Piece from a colour and piece type.
 func NewPiece(colour Colour, pieceType PieceType) Piece {
-	if pieceType == PieceTypeNone { // avoid encoding a black non-piece as >0
+	if pieceType == NoPieceType { // avoid encoding a black non-piece as >0
 		return Piece(pieceType)
 	}
 	return Piece(colour<<3) | Piece(pieceType)

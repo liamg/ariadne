@@ -17,7 +17,7 @@ func TestPawnPushes(t *testing.T) {
 		{
 			name:            "starting position (white)",
 			occupancy:       StartingPosition().Occupancy(),
-			pawns:           StartingPosition().Pieces(White, PieceTypePawn),
+			pawns:           StartingPosition().Pieces(White, Pawn),
 			colour:          White,
 			expectedSingles: Rank3Mask,
 			expectedDoubles: Rank4Mask,
@@ -25,7 +25,7 @@ func TestPawnPushes(t *testing.T) {
 		{
 			name:            "starting position (black)",
 			occupancy:       StartingPosition().Occupancy(),
-			pawns:           StartingPosition().Pieces(Black, PieceTypePawn),
+			pawns:           StartingPosition().Pieces(Black, Pawn),
 			colour:          Black,
 			expectedSingles: Rank6Mask,
 			expectedDoubles: Rank5Mask,

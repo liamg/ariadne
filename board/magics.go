@@ -24,7 +24,6 @@ var (
   rookMagicNumbers   = [64]uint64{`)
 
 	for sq := A1; sq <= H8; sq++ {
-		fmt.Printf("Generating rook magic for square %s...\n", sq)
 		fmt.Fprint(w, "    0x")
 		mask := computeRelevantOccupancyMask(sq, rookDirections)
 		n := mask.Count()
@@ -78,7 +77,6 @@ var (
   bishopMagicNumbers = [64]uint64{`)
 
 	for sq := A1; sq <= H8; sq++ {
-		fmt.Printf("Generating bishop magic for square %s...\n", sq)
 		fmt.Fprint(w, "    0x")
 		mask := computeRelevantOccupancyMask(sq, bishopDirections)
 		n := mask.Count()
