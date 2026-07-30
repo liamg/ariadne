@@ -69,7 +69,7 @@ func TestIsSquareAttacked(t *testing.T) {
 				t.Fatalf("Failed to parse FEN: %v", err)
 			}
 
-			if got := pos.isSquareAttacked(test.square, test.by); got != test.expected {
+			if got := pos.IsSquareAttacked(test.square, test.by); got != test.expected {
 				t.Errorf("isSquareAttacked(%s, %s) = %v, want %v",
 					test.square, test.by, got, test.expected)
 			}

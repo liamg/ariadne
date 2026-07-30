@@ -37,14 +37,14 @@ func (p *Position) generateKingMoves(moves []Move, occ Bitboard) []Move {
 	case White:
 		if p.state.castlingRights&CastlingWhiteKingside != 0 {
 			if occ&whiteKingsideEmptyMask == 0 {
-				if !p.isSquareAttacked(E1, Black) && !p.isSquareAttacked(F1, Black) && !p.isSquareAttacked(G1, Black) {
+				if !p.IsSquareAttacked(E1, Black) && !p.IsSquareAttacked(F1, Black) && !p.IsSquareAttacked(G1, Black) {
 					moves = append(moves, NewMove(E1, G1, KingsideCastle))
 				}
 			}
 		}
 		if p.state.castlingRights&CastlingWhiteQueenside != 0 {
 			if occ&whiteQueensideEmptyMask == 0 {
-				if !p.isSquareAttacked(E1, Black) && !p.isSquareAttacked(D1, Black) && !p.isSquareAttacked(C1, Black) {
+				if !p.IsSquareAttacked(E1, Black) && !p.IsSquareAttacked(D1, Black) && !p.IsSquareAttacked(C1, Black) {
 					moves = append(moves, NewMove(E1, C1, QueensideCastle))
 				}
 			}
@@ -52,14 +52,14 @@ func (p *Position) generateKingMoves(moves []Move, occ Bitboard) []Move {
 	case Black:
 		if p.state.castlingRights&CastlingBlackKingside != 0 {
 			if occ&blackKingsideEmptyMask == 0 {
-				if !p.isSquareAttacked(E8, White) && !p.isSquareAttacked(F8, White) && !p.isSquareAttacked(G8, White) {
+				if !p.IsSquareAttacked(E8, White) && !p.IsSquareAttacked(F8, White) && !p.IsSquareAttacked(G8, White) {
 					moves = append(moves, NewMove(E8, G8, KingsideCastle))
 				}
 			}
 		}
 		if p.state.castlingRights&CastlingBlackQueenside != 0 {
 			if occ&blackQueensideEmptyMask == 0 {
-				if !p.isSquareAttacked(E8, White) && !p.isSquareAttacked(D8, White) && !p.isSquareAttacked(C8, White) {
+				if !p.IsSquareAttacked(E8, White) && !p.IsSquareAttacked(D8, White) && !p.IsSquareAttacked(C8, White) {
 					moves = append(moves, NewMove(E8, C8, QueensideCastle))
 				}
 			}
@@ -237,7 +237,7 @@ func (p *Position) GenerateLegalMoves() []Move {
 	legalMoves := make([]Move, 0, len(moves))
 	for _, move := range moves {
 		undo := p.MakeMove(move)
-		if !p.isLastMoveIllegal() {
+		if !p.IsLastMoveIllegal() {
 			legalMoves = append(legalMoves, move)
 		}
 		p.UnmakeMove(undo)

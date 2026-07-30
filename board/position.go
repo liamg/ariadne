@@ -468,10 +468,14 @@ func (p *Position) Validate() error {
 // The position MUST have kings on the board, otherwise it will panic.
 func (p *Position) InCheck(c Colour) bool {
 	king := p.kingSquare[c]
-	return p.isSquareAttacked(king, c.Opposite())
+	return p.IsSquareAttacked(king, c.Opposite())
 }
 
-// isLastMoveIllegal returns true if the last move made was illegal, i.e. it left the side that moved in check.
-func (p *Position) isLastMoveIllegal() bool {
+// IsLastMoveIllegal returns true if the last move made was illegal, i.e. it left the side that moved in check.
+func (p *Position) IsLastMoveIllegal() bool {
 	return p.InCheck(p.sideToMove.Opposite())
+}
+
+func (p *Position) SideToMove() Colour {
+	return p.sideToMove
 }
