@@ -1,11 +1,19 @@
 default: test
 
-.PHONY: test generate
+.PHONY: test test-full generate bench
 
 test:
-	@echo "Running tests..."
+	@echo "Running short test suite..."
+	@go test -short -tags magicgen ./...
+
+test-full:
+	@echo "Running full test suite..."
 	@go test -tags magicgen ./...
 
 generate:
 	@echo "Generating code..."
 	@go generate ./...
+
+bench:
+	@echo "Running benchmarks..."
+	go test -run=^$$ -bench=. -benchmem -count=10 ./...
