@@ -127,11 +127,11 @@ that constant, so you guess randomly until one works.
 
 ## Phase 3 — Perft
 
-- [ ] `Perft(depth)` — count leaf nodes, nothing else
-- [ ] Verify against published counts for the starting position to depth 6
-- [ ] Verify against the standard test positions (Kiwipete, position 3, 4, 5, 6)
-- [ ] `PerftDivide` — per-move breakdown, for bisecting bugs
-- [ ] Make perft a CI-style test you can run in seconds
+- [x] `Perft(depth)` — count leaf nodes, nothing else
+- [x] Verify against published counts for the starting position to depth 6
+- [x] Verify against the standard test positions (Kiwipete, position 3, 4, 5, 6)
+- [x] `PerftDivide` — per-move breakdown, for bisecting bugs
+- [x] Make perft a CI-style test you can run in seconds
 
 **How to debug a perft mismatch:** run `PerftDivide` on your engine and on a known-good one
 (Stockfish has `go perft N`). Compare the per-move counts, find the move whose subtree count

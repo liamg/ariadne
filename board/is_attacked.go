@@ -1,7 +1,7 @@
 package board
 
-// isSquareAttacked checks if a square is attacked by any piece of the given colour.
-func (p *Position) isSquareAttacked(sq Square, by Colour) bool {
+// IsSquareAttacked checks if a square is attacked by any piece of the given colour.
+func (p *Position) IsSquareAttacked(sq Square, by Colour) bool {
 	if knightAttackers := knightAttacks[sq] & p.byType[Knight] & p.byColour[by]; knightAttackers != 0 {
 		return true
 	}
