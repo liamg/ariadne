@@ -110,3 +110,21 @@ func TestSearch(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkSearch(b *testing.B) {
+	pos, err := board.ParseFEN(board.FenKiwiPete)
+	if err != nil {
+		b.Fatalf("failed to parse FEN: %v", err)
+	}
+
+	var nc uint64
+	for b.Loop() {
+		b.StopTimer()
+		searcher := New()
+		b.StartTimer()
+		result := searcher.Search(b.Context(), pos, Limits{Depth: 6})
+		nc += result.NodeCount
+	}
+	b.ReportMetric(float64(nc)/b.Elapsed().Seconds(), "nodes/s")
+	b.ReportMetric(float64(nc)/float64(b.N), "nodes/op")
+}

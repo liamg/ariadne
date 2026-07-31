@@ -20,7 +20,7 @@ type PositionState struct {
 	castlingRights  CastlingRights
 	enPassantSquare Square
 	halfMoveClock   uint8
-	// NOTE: zobrist goes here eventually...
+	zobristHash     uint64
 }
 
 type CastlingRights uint8
@@ -35,7 +35,7 @@ const (
 )
 
 func EmptyPosition() *Position {
-	return &Position{
+	p := &Position{
 		state: PositionState{
 			castlingRights:  CastlingNone,
 			enPassantSquare: NoSquare,
@@ -48,6 +48,8 @@ func EmptyPosition() *Position {
 		mailbox:        [64]Piece{},
 		kingSquare:     [2]Square{NoSquare, NoSquare},
 	}
+	p.state.zobristHash = GenerateZobristHash(p)
+	return p
 }
 
 func StartingPosition() *Position {
@@ -78,6 +80,8 @@ func StartingPosition() *Position {
 	pos.addPiece(F8, BlackBishop)
 	pos.addPiece(G8, BlackKnight)
 	pos.addPiece(H8, BlackRook)
+
+	pos.state.zobristHash = GenerateZobristHash(pos)
 
 	return pos
 }
@@ -215,6 +219,8 @@ func RandomPosition(rnd *rand.Rand) *Position {
 			}
 		}
 	}
+
+	pos.state.zobristHash = GenerateZobristHash(pos)
 
 	return pos
 }
@@ -528,4 +534,8 @@ func (p *Position) IsLastMoveIllegal() bool {
 
 func (p *Position) SideToMove() Colour {
 	return p.sideToMove
+}
+
+func (p *Position) ZobristHash() uint64 {
+	return p.state.zobristHash
 }

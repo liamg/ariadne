@@ -37,6 +37,8 @@ func (p *Position) MakeMove(move Move) Undo {
 	p.state.enPassantSquare = NoSquare
 	piece := p.mailbox[from]
 
+	p.state.zobristHash ^= zobristTable[from][piece]
+
 	kind := move.Kind()
 
 	switch kind {
@@ -47,27 +49,29 @@ func (p *Position) MakeMove(move Move) Undo {
 			p.state.halfMoveClock++
 		}
 		p.movePiece(piece, from, to)
+		p.state.zobristHash ^= zobristTable[to][piece]
 	case Capture:
 		p.state.halfMoveClock = 0
 		target := p.mailbox[to]
 		undo.capturedPieceType = target.Type()
 		p.removeKnownPiece(to, target) // remove captured piece
+		p.state.zobristHash ^= zobristTable[to][target]
 		p.movePiece(piece, from, to)
+		p.state.zobristHash ^= zobristTable[to][piece]
 	case EnPassantCapture:
 		p.state.halfMoveClock = 0
 
-		switch p.sideToMove {
-		case White:
-			capturedPawnSquare, _ := to.Bitboard().South().PopSquare()
-			undo.capturedPieceType = Pawn
-			target := p.mailbox[capturedPawnSquare]
-			p.removeKnownPiece(capturedPawnSquare, target)
-		case Black:
-			capturedPawnSquare, _ := to.Bitboard().North().PopSquare()
-			undo.capturedPieceType = Pawn
-			target := p.mailbox[capturedPawnSquare]
-			p.removeKnownPiece(capturedPawnSquare, target)
+		var capturedPawnSquare Square
+		if p.sideToMove == White {
+			capturedPawnSquare, _ = to.Bitboard().South().PopSquare()
+		} else {
+			capturedPawnSquare, _ = to.Bitboard().North().PopSquare()
 		}
+		undo.capturedPieceType = Pawn
+		target := p.mailbox[capturedPawnSquare]
+		p.removeKnownPiece(capturedPawnSquare, target)
+		p.state.zobristHash ^= zobristTable[capturedPawnSquare][target]
+		p.state.zobristHash ^= zobristTable[to][piece]
 
 		p.movePiece(piece, from, to)
 	case DoublePawnPush:
@@ -81,37 +85,51 @@ func (p *Position) MakeMove(move Move) Undo {
 				p.state.enPassantSquare, _ = to.Bitboard().North().PopSquare()
 			}
 		}
+		p.state.zobristHash ^= zobristTable[to][piece]
 	case BishopPromotionCapture, KnightPromotionCapture, RookPromotionCapture, QueenPromotionCapture:
 		target := p.mailbox[to]
 		undo.capturedPieceType = target.Type()
 		p.removeKnownPiece(to, target) // remove captured piece
+		p.state.zobristHash ^= zobristTable[to][target]
 		fallthrough
 	case BishopPromotion, KnightPromotion, RookPromotion, QueenPromotion:
 		p.state.halfMoveClock = 0
 		p.removeKnownPiece(from, piece)
-		p.addPiece(to, NewPiece(p.sideToMove, move.PromotionPieceType()))
+		promo := NewPiece(p.sideToMove, move.PromotionPieceType())
+		p.addPiece(to, promo)
+		p.state.zobristHash ^= zobristTable[to][promo]
 	case KingsideCastle:
 		p.state.halfMoveClock++
 		// the piece being moved is the KING, the ROOK moved by side-effect
 		switch p.sideToMove {
 		case White:
 			p.movePiece(piece, E1, G1)
-			p.movePiece(NewPiece(White, Rook), H1, F1)
+			rook := NewPiece(White, Rook)
+			p.movePiece(rook, H1, F1)
+			p.state.zobristHash ^= zobristTable[F1][rook] ^ zobristTable[H1][rook]
 		case Black:
 			p.movePiece(piece, E8, G8)
-			p.movePiece(NewPiece(Black, Rook), H8, F8)
+			rook := NewPiece(Black, Rook)
+			p.movePiece(rook, H8, F8)
+			p.state.zobristHash ^= zobristTable[F8][rook] ^ zobristTable[H8][rook]
 		}
+		p.state.zobristHash ^= zobristTable[to][piece]
 	case QueensideCastle:
 		// the piece being moved is the KING, the ROOK moved by side-effect
 		p.state.halfMoveClock++
 		switch p.sideToMove {
 		case White:
 			p.movePiece(piece, E1, C1)
-			p.movePiece(NewPiece(White, Rook), A1, D1)
+			rook := NewPiece(White, Rook)
+			p.movePiece(rook, A1, D1)
+			p.state.zobristHash ^= zobristTable[D1][rook] ^ zobristTable[A1][rook]
 		case Black:
 			p.movePiece(piece, E8, C8)
-			p.movePiece(NewPiece(Black, Rook), A8, D8)
+			rook := NewPiece(Black, Rook)
+			p.movePiece(rook, A8, D8)
+			p.state.zobristHash ^= zobristTable[D8][rook] ^ zobristTable[A8][rook]
 		}
+		p.state.zobristHash ^= zobristTable[to][piece]
 	default:
 		panic(fmt.Sprintf("cannot make invalid move 0b%b", move))
 	}
@@ -123,6 +141,11 @@ func (p *Position) MakeMove(move Move) Undo {
 		p.sideToMove = Black
 	}
 
+	// always XOR this, as colour always flips
+	p.state.zobristHash ^= zobristBlackToMove
+	p.state.zobristHash ^= zobristCastlingRights[p.state.castlingRights] ^ zobristCastlingRights[undo.previousState.castlingRights]
+	p.state.zobristHash ^= zobristEnPassant[p.state.enPassantSquare] ^ zobristEnPassant[undo.previousState.enPassantSquare]
+
 	return undo
 }
 
@@ -130,8 +153,6 @@ func (p *Position) MakeMove(move Move) Undo {
 // The Undo object must be the one returned by the corresponding MakeMove call. If the Undo object is invalid
 // or does not match the last move made, the behavior is undefined.
 func (p *Position) UnmakeMove(undo Undo) {
-	p.state = undo.previousState
-
 	movedSide := p.sideToMove.Opposite()
 	if movedSide == Black {
 		p.fullMoveNumber--
@@ -191,5 +212,6 @@ func (p *Position) UnmakeMove(undo Undo) {
 		panic(fmt.Sprintf("cannot undo invalid move 0b%b", undo.move))
 	}
 
+	p.state = undo.previousState
 	p.sideToMove = movedSide
 }

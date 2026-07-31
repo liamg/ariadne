@@ -35,13 +35,14 @@ type Limits struct {
 }
 
 type Result struct {
-	BestMove board.Move
-	Score    eval.Score
+	BestMove  board.Move
+	Score     eval.Score
+	NodeCount uint64
 }
 
 // State is the per-search state - reset between searches
 type State struct {
-	NodeCount int
+	NodeCount uint64
 	Stop      atomic.Bool
 	BestMove  board.Move
 }
@@ -80,5 +81,6 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 		result.BestMove = s.state.BestMove
 	}
 
+	result.NodeCount = s.state.NodeCount
 	return result
 }

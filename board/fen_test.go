@@ -15,7 +15,7 @@ func TestParseFEN(t *testing.T) {
 	}{
 		{
 			name:     "starting position",
-			fen:      fenStarting,
+			fen:      FenStarting,
 			expected: StartingPosition(),
 		},
 		{
@@ -160,7 +160,7 @@ func TestParseFEN(t *testing.T) {
 }
 
 func TestParseFENKiwiPete(t *testing.T) {
-	pos, err := ParseFEN(fenKiwiPete)
+	pos, err := ParseFEN(FenKiwiPete)
 	if err != nil {
 		t.Fatalf("ParseFEN returned error: %v", err)
 	}

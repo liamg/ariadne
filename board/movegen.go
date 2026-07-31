@@ -10,6 +10,7 @@ const (
 // GeneratePseudoLegalMoves fills the passed buffer (growing if needed) with all pseudo-legal moves for the position
 // this does NOT check for checks, so the caller must filter out moves that leave the king in check
 func (p *Position) GeneratePseudoLegalMoves(moves []Move) []Move {
+	moves = moves[:0]
 	occ := p.Occupancy()
 	moves = p.generateKingMoves(moves, occ)
 	moves = p.generateKnightMoves(moves, occ)
@@ -141,12 +142,11 @@ func (p *Position) generatePawnMoves(moves []Move, occ Bitboard) []Move {
 	enemyColour := p.sideToMove.Opposite()
 	enemy := p.byColour[enemyColour]
 
-	if epSquare := p.state.enPassantSquare; epSquare != NoSquare {
-		attackers := findEnPassantAttackers(p.sideToMove, pawns, epSquare)
-		for attackers != 0 {
-			from, attackers = attackers.PopSquare()
-			moves = append(moves, NewMove(from, epSquare, EnPassantCapture))
-		}
+	epSquare := p.state.enPassantSquare
+	attackers := findEnPassantAttackers(p.sideToMove, pawns, epSquare)
+	for attackers != 0 {
+		from, attackers = attackers.PopSquare()
+		moves = append(moves, NewMove(from, epSquare, EnPassantCapture))
 	}
 
 	west, east := findPawnCaptures(p.sideToMove, pawns, enemy)

@@ -41,7 +41,7 @@ var perftCases = []struct {
 	},
 	{
 		name:           "Kiwipete",
-		fen:            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+		fen:            FenKiwiPete,
 		expectedDepths: []uint64{1, 48, 2039, 97862, 4085603, 193690690},
 		expectedDepthThreeCounts: []PerftCount{
 			{NewMove(A1, B1, QuietMove), 1969},
@@ -345,16 +345,12 @@ func assertPerfCountsMatch(t *testing.T, expected, actual []PerftCount) {
 }
 
 func BenchmarkPerft(b *testing.B) {
-	for _, tt := range perftCases {
-		b.Run(fmt.Sprintf("%s depth 5", tt.name), func(b *testing.B) {
-			pos, err := ParseFEN(tt.fen)
-			if err != nil {
-				b.Fatalf("Failed to create position from FEN: %v", err)
-			}
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				pos.Perft(5)
-			}
-		})
+	pos, err := ParseFEN(FenKiwiPete)
+	if err != nil {
+		b.Fatalf("Failed to create position from FEN: %v", err)
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		pos.Perft(5)
 	}
 }

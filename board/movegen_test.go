@@ -676,3 +676,24 @@ func TestGenerateLegalMoves(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkGeneratePseudoLegalMoves(b *testing.B) {
+	for _, test := range perftCases {
+		b.Run(test.name, func(b *testing.B) {
+			pos, err := ParseFEN(test.fen)
+			if err != nil {
+				b.Fatalf("Failed to parse FEN: %v", err)
+			}
+			moves := make([]Move, 0, 256)
+			b.ResetTimer()
+			for b.Loop() {
+				moves = pos.GeneratePseudoLegalMoves(moves)
+			}
+			b.StopTimer()
+			// use moves to stop it being optimised out by the compiler
+			if len(moves) == 0 {
+				b.Error("No moves generated")
+			}
+		})
+	}
+}
