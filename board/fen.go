@@ -165,6 +165,12 @@ func ParseFEN(fen string) (*Position, error) {
 		}
 	}
 
+	pos.tidy()
+
+	if err := pos.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid FEN: %v", err)
+	}
+
 	return pos, nil
 }
 

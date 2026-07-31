@@ -197,13 +197,21 @@ func RandomPosition(rnd *rand.Rand) *Position {
 			doublePushedPawns := enemyPawns & Rank5Mask
 			if doublePushedPawns > 0 {
 				sq, _ := doublePushedPawns.PopSquare()
-				pos.state.enPassantSquare, _ = sq.Bitboard().North().PopSquare()
+				epSq, _ := sq.Bitboard().North().PopSquare()
+				if pawnAttacks[Black][epSq]&(pos.byColour[White]&pos.byType[Pawn]) > 0 {
+					pos.state.enPassantSquare = epSq
+				}
+
 			}
 		case White:
 			doublePushedPawns := enemyPawns & Rank4Mask
 			if doublePushedPawns > 0 {
 				sq, _ := doublePushedPawns.PopSquare()
-				pos.state.enPassantSquare, _ = sq.Bitboard().South().PopSquare()
+				epSq, _ := sq.Bitboard().South().PopSquare()
+				if pawnAttacks[White][epSq]&(pos.byColour[Black]&pos.byType[Pawn]) > 0 {
+					pos.state.enPassantSquare = epSq
+				}
+
 			}
 		}
 	}
@@ -377,7 +385,40 @@ func (p *Position) PieceAt(square Square) Piece {
 	return p.mailbox[square]
 }
 
+// tidy corrects any issues with the position whichare not enough to make it fail Validate
+// this currently only unsets the en passant square when no opposing pawn is in position to
+// capture it, but could be extended to fix other issues in the future.
+func (p *Position) tidy() {
+	// if en passant square is set and otherwise valid, but has no elligible attackers, unset it
+	if p.state.enPassantSquare != NoSquare && p.validateEnPassant(false) == nil {
+		epSquare := p.state.enPassantSquare
+		enemyPawns := pawnAttacks[p.sideToMove.Opposite()][epSquare] & p.byColour[p.sideToMove] & p.byType[Pawn]
+		if enemyPawns == 0 {
+			p.state.enPassantSquare = NoSquare
+		}
+	}
+}
+
 func (p *Position) Validate() error {
+	if p.kingSquare[White] == NoSquare {
+		return fmt.Errorf("invalid position: no white king on the board")
+	}
+	if p.kingSquare[Black] == NoSquare {
+		return fmt.Errorf("invalid position: no black king on the board")
+	}
+
+	if p.byType[King].Count() != 2 {
+		return fmt.Errorf("invalid position: there must be exactly 2 kings on the board, found %d", p.byType[King].Count())
+	}
+
+	if p.byType[Pawn].Count() > 16 {
+		return fmt.Errorf("invalid position: there cannot be more than 16 pawns on the board, found %d", p.byType[Pawn].Count())
+	}
+
+	if p.byType[Pawn]&(Rank1Mask|Rank8Mask) != 0 {
+		return fmt.Errorf("invalid position: pawns cannot be on the first or last rank")
+	}
+
 	if p.state.castlingRights&CastlingWhiteQueenside != 0 {
 		if p.PieceAt(A1) != WhiteRook {
 			return fmt.Errorf("invalid castling rights: White queenside castling right is set, but A1 does not have a white rook")
@@ -414,50 +455,59 @@ func (p *Position) Validate() error {
 		}
 	}
 
-	if p.state.enPassantSquare != NoSquare {
-		epSquare := p.state.enPassantSquare
-		if epSquare.Rank() != Rank3 && epSquare.Rank() != Rank6 {
-			return fmt.Errorf("invalid en passant square: %s is not on rank 3 or 6", epSquare.String())
+	return p.validateEnPassant(true)
+}
+
+func (p *Position) validateEnPassant(requireAttacker bool) error {
+	if p.state.enPassantSquare == NoSquare {
+		return nil
+	}
+	epSquare := p.state.enPassantSquare
+
+	// en passsant square must be on rank 3 or 6
+	if epSquare.Rank() != Rank3 && epSquare.Rank() != Rank6 {
+		return fmt.Errorf("invalid en passant square: %s is not on rank 3 or 6", epSquare.String())
+	}
+
+	var pawnSquare Square
+	switch epSquare.Rank() {
+	case Rank3:
+		if p.sideToMove != Black {
+			return fmt.Errorf("invalid en passant square: %s is set, but it is not black's turn to move", epSquare.String())
+		}
+		pawnSquare, _ = epSquare.Bitboard().North().PopSquare()
+		if p.PieceAt(pawnSquare) != WhitePawn {
+			return fmt.Errorf("invalid en passant square: %s is set, but there is no white pawn on %s", epSquare.String(), pawnSquare.String())
+		}
+		emptySquare, _ := epSquare.Bitboard().South().PopSquare()
+		if p.PieceAt(emptySquare) != NoPiece {
+			return fmt.Errorf("invalid en passant square: %s is set, but there is a piece on %s", epSquare.String(), emptySquare.String())
 		}
 
-		var pawnSquare Square
-		if epSquare.Rank() == Rank3 {
-			pawnSquare, _ = epSquare.Bitboard().North().PopSquare()
-			if p.PieceAt(pawnSquare) != WhitePawn {
-				return fmt.Errorf("invalid en passant square: %s is set, but there is no white pawn on %s", epSquare.String(), pawnSquare.String())
-			}
+	case Rank6:
+		if p.sideToMove != White {
+			return fmt.Errorf("invalid en passant square: %s is set, but it is not white's turn to move", epSquare.String())
 		}
-
-		if epSquare.Rank() == Rank6 {
-			pawnSquare, _ = epSquare.Bitboard().South().PopSquare()
-			if p.PieceAt(pawnSquare) != BlackPawn {
-				return fmt.Errorf("invalid en passant square: %s is set, but there is no black pawn on %s", epSquare.String(), pawnSquare.String())
-			}
+		pawnSquare, _ = epSquare.Bitboard().South().PopSquare()
+		if p.PieceAt(pawnSquare) != BlackPawn {
+			return fmt.Errorf("invalid en passant square: %s is set, but there is no black pawn on %s", epSquare.String(), pawnSquare.String())
 		}
-
-		if p.mailbox[epSquare] != NoPiece {
-			return fmt.Errorf("invalid en passant square: %s is set, but there is a piece on that square", epSquare.String())
+		emptySquare, _ := epSquare.Bitboard().North().PopSquare()
+		if p.PieceAt(emptySquare) != NoPiece {
+			return fmt.Errorf("invalid en passant square: %s is set, but there is a piece on %s", epSquare.String(), emptySquare.String())
 		}
+	default:
+		return fmt.Errorf("invalid en passant square: %s is not on rank 3 or 6", epSquare.String())
+	}
 
-		switch p.sideToMove {
-		case White:
-			if epSquare.Rank() != Rank6 {
-				return fmt.Errorf("invalid en passant square: %s is set, but it is not on rank 6 when it is white's turn to move", epSquare.String())
-			}
-			file := epSquare.File()
-			sq, _ := SquareFromFileAndRank(file, Rank7)
-			if p.mailbox[sq] != NoPiece {
-				return fmt.Errorf("invalid en passant square: %s is set, but there is a piece on %s", epSquare.String(), sq.String())
-			}
-		case Black:
-			if epSquare.Rank() != Rank3 {
-				return fmt.Errorf("invalid en passant square: %s is set, but it is not on rank 3 when it is black's turn to move", epSquare.String())
-			}
-			file := epSquare.File()
-			sq, _ := SquareFromFileAndRank(file, Rank2)
-			if p.mailbox[sq] != NoPiece {
-				return fmt.Errorf("invalid en passant square: %s is set, but there is a piece on %s", epSquare.String(), sq.String())
-			}
+	if p.mailbox[epSquare] != NoPiece {
+		return fmt.Errorf("invalid en passant square: %s is set, but there is a piece on that square", epSquare.String())
+	}
+
+	if requireAttacker {
+		enemyPawns := pawnAttacks[p.sideToMove.Opposite()][epSquare] & p.byColour[p.sideToMove] & p.byType[Pawn]
+		if enemyPawns == 0 {
+			return fmt.Errorf("invalid en passant square: %s is set, but there is no opposing pawn that can capture it", epSquare.String())
 		}
 	}
 

@@ -151,9 +151,9 @@ and you never doubt it again. **Do not start Phase 4 before this passes.**
 
 ## Phase 4 — Search
 
-- [ ] Minimax to fixed depth (write it once, understand it, then throw it away)
-- [ ] Negamax with alpha-beta
-- [ ] Iterative deepening
+- [x] Minimax to fixed depth (write it once, understand it, then throw it away)
+- [x] Negamax with alpha-beta
+- [x] Iterative deepening
 - [ ] Zobrist hashing: random key per (piece, square), XOR in/out on make/unmake
 - [ ] Transposition table: flat array, depth-preferred replacement, exact/lower/upper bounds
 - [ ] Quiescence search — captures only, until the position is quiet
