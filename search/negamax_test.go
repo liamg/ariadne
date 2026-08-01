@@ -11,7 +11,7 @@ func TestNegamax(t *testing.T) {
 	tests := []struct {
 		name     string
 		fen      string
-		depth    int
+		depth    int8
 		expected eval.Score
 	}{
 		{
@@ -99,6 +99,12 @@ func TestNegamax(t *testing.T) {
 			fen:      "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1",
 			depth:    1,
 			expected: eval.Draw,
+		},
+		{
+			name:     "mate in 2",
+			fen:      "7k/p7/5K2/8/8/8/8/R7 w - - 0 1",
+			depth:    4,
+			expected: eval.Mate - 3,
 		},
 	}
 

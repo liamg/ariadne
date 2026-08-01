@@ -11,7 +11,7 @@ func TestMinimax(t *testing.T) {
 	tests := []struct {
 		name     string
 		fen      string
-		depth    int
+		depth    int8
 		expected eval.Score
 	}{
 		{

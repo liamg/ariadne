@@ -5,7 +5,7 @@ import (
 	"github.com/liamg/chess/eval"
 )
 
-func (s *Searcher) minimax(pos *board.Position, depth, ply int) eval.Score {
+func (s *Searcher) minimax(pos *board.Position, depth int8, ply int) eval.Score {
 	s.state.NodeCount++
 
 	if depth <= 0 {
