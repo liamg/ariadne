@@ -156,10 +156,10 @@ and you never doubt it again. **Do not start Phase 4 before this passes.**
 - [x] Iterative deepening
 - [x] Zobrist hashing: random key per (piece, square), XOR in/out on make/unmake
 - [x] Transposition table: flat array, depth-preferred replacement, exact/lower/upper bounds
-- [ ] Quiescence search — captures only, until the position is quiet
-- [ ] Move ordering: TT move first, then MVV-LVA captures, then quiets
-- [ ] Repetition and 50-move draw detection
-- [ ] Mate scores that account for distance to mate
+- [x] Quiescence search — captures only, until the position is quiet
+- [x] Move ordering: TT move first, then MVV-LVA captures, then quiets
+- [x] Repetition and 50-move draw detection
+- [x] Mate scores that account for distance to mate
 
 **Maths — why move ordering dominates.** With ~35 legal moves per position, searching 8
 moves deep means 35⁸ ≈ 2.2 trillion positions. Alpha-beta with *perfect* move ordering cuts
@@ -191,13 +191,12 @@ group where every element is its own inverse; you don't need the vocabulary, jus
 
 ## Phase 5 — Evaluation
 
-- [ ] Material counting
-- [ ] Piece-square tables
-- [ ] Tapered eval: interpolate midgame/endgame by remaining material
-- [ ] Mobility (count of legal moves per piece)
-- [ ] Pawn structure: passed, isolated, doubled, backward
-- [ ] King safety: attackers in the king zone, pawn shield
-- [ ] Bishop pair, rook on open file
+- [x] Material counting
+- [x] Piece-square tables
+- [x] Tapered eval: interpolate midgame/endgame by remaining material
+- [x] Mobility (count of legal moves per piece)
+- [x] Pawn structure: passed, isolated, doubled, backward
+- [x] Bishop pair, rook on open file
 
 **Maths — linear interpolation.** A knight on the rim is bad in the middlegame and fine in
 an endgame, so you keep two values and blend them: `score = (mg*phase + eg*(24-phase)) / 24`,
@@ -314,6 +313,7 @@ games per change, forever. Budget for it.
 
 Each of these is one idea, added and SPRT-tested individually. **Never two at once.**
 
+- [ ] King safety: attackers in the king zone, pawn shield
 - [ ] Killer moves and history heuristic
 - [ ] Aspiration windows
 - [ ] Principal variation search (null-window re-search)

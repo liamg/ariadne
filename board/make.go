@@ -145,6 +145,7 @@ func (p *Position) MakeMove(move Move) Undo {
 	p.state.zobristHash ^= zobristBlackToMove
 	p.state.zobristHash ^= zobristCastlingRights[p.state.castlingRights] ^ zobristCastlingRights[undo.previousState.castlingRights]
 	p.state.zobristHash ^= zobristEnPassant[p.state.enPassantSquare] ^ zobristEnPassant[undo.previousState.enPassantSquare]
+	p.pastZobrist = append(p.pastZobrist, p.state.zobristHash)
 
 	return undo
 }
@@ -214,4 +215,5 @@ func (p *Position) UnmakeMove(undo Undo) {
 
 	p.state = undo.previousState
 	p.sideToMove = movedSide
+	p.pastZobrist = p.pastZobrist[:len(p.pastZobrist)-1]
 }

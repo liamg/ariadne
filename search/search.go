@@ -9,11 +9,12 @@ import (
 )
 
 type Searcher struct {
-	state      *State
-	plyBuffers [][]board.Move
-	ttSizeMB   int
-	tt         *transpositionTable
-	age        uint8
+	state        *State
+	plyBuffers   [][]board.Move
+	scoreBuffers [][]orderScore
+	ttSizeMB     int
+	tt           *transpositionTable
+	age          uint8
 }
 
 const MaxPly = 128
@@ -30,14 +31,17 @@ func WithTranspositionTableSizeInMegaBytes(size int) Option {
 
 func New(options ...Option) *Searcher {
 	plyBuffers := make([][]board.Move, MaxPly)
+	scoreBuffers := make([][]orderScore, MaxPly)
 	for i := range len(plyBuffers) {
 		plyBuffers[i] = make([]board.Move, 0, MaxMoves)
+		scoreBuffers[i] = make([]orderScore, 0, MaxMoves)
 	}
 
 	s := &Searcher{
-		state:      &State{},
-		plyBuffers: plyBuffers,
-		ttSizeMB:   64, // default to 64MB
+		state:        &State{},
+		plyBuffers:   plyBuffers,
+		scoreBuffers: scoreBuffers,
+		ttSizeMB:     64, // default to 64MB
 	}
 
 	for _, opt := range options {

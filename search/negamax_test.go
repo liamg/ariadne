@@ -7,104 +7,122 @@ import (
 	"github.com/liamg/chess/eval"
 )
 
+// bands, not exact values, so eval retuning doesn't churn these.
+// mate and draw scores are exact - min == max.
+// the minimax comparison is the real check, and is eval independent
 func TestNegamax(t *testing.T) {
 	tests := []struct {
 		name     string
 		fen      string
 		depth    int8
-		expected eval.Score
+		minScore eval.Score
+		maxScore eval.Score
 	}{
 		{
 			name:     "initial position depth 1",
 			fen:      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			depth:    1,
-			expected: eval.Score(0),
+			minScore: -100,
+			maxScore: 100,
 		},
 		{
 			name:     "initial position depth 2",
 			fen:      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			depth:    2,
-			expected: eval.Score(0),
+			minScore: -100,
+			maxScore: 100,
 		},
 		{
 			name:     "initial position depth 3",
 			fen:      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			depth:    3,
-			expected: eval.Score(0),
+			minScore: -100,
+			maxScore: 100,
 		},
 		{
 			name:     "bare kings",
 			fen:      "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
 			depth:    3,
-			expected: eval.Score(0),
+			minScore: -100,
+			maxScore: 100,
 		},
 		{
+			// rook takes a hanging queen: roughly +500 either side of tuning
 			name:     "white wins queen depth 1",
 			fen:      "4k3/8/8/8/3q4/8/8/3RK3 w - - 0 1",
 			depth:    1,
-			expected: eval.Score(500),
+			minScore: 300,
+			maxScore: 700,
 		},
 		{
 			name:     "white wins queen depth 3",
 			fen:      "4k3/8/8/8/3q4/8/8/3RK3 w - - 0 1",
 			depth:    3,
-			expected: eval.Score(500),
+			minScore: 300,
+			maxScore: 700,
 		},
 		{
 			name:     "black wins queen depth 1",
 			fen:      "3rk3/8/8/3Q4/8/8/8/4K3 b - - 0 1",
 			depth:    1,
-			expected: eval.Score(500),
+			minScore: 300,
+			maxScore: 700,
 		},
 		{
 			name:     "black wins queen depth 3",
 			fen:      "3rk3/8/8/3Q4/8/8/8/4K3 b - - 0 1",
 			depth:    3,
-			expected: eval.Score(500),
+			minScore: 300,
+			maxScore: 700,
 		},
 		{
-			// depth 0 returns the static eval without a terminal check,
-			// so a mate one ply away is invisible - this is just material
-			name:     "mate in 1 invisible at depth 1",
+			name:     "mate in 1 visible at depth 1 with quiescence",
 			fen:      "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1",
 			depth:    1,
-			expected: eval.Score(200),
+			minScore: eval.Mate - 1,
+			maxScore: eval.Mate - 1,
 		},
 		{
 			name:     "white mates in 1",
 			fen:      "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1",
 			depth:    2,
-			expected: eval.Mate - 1,
+			minScore: eval.Mate - 1,
+			maxScore: eval.Mate - 1,
 		},
 		{
 			name:     "black mates in 1",
 			fen:      "r5k1/8/8/8/8/8/5PPP/6K1 b - - 0 1",
 			depth:    2,
-			expected: eval.Mate - 1,
+			minScore: eval.Mate - 1,
+			maxScore: eval.Mate - 1,
 		},
 		{
 			name:     "white already mated",
 			fen:      "6k1/8/8/8/8/8/5PPP/r5K1 w - - 0 1",
 			depth:    1,
-			expected: -eval.Mate,
+			minScore: -eval.Mate,
+			maxScore: -eval.Mate,
 		},
 		{
 			name:     "black already mated",
 			fen:      "R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1",
 			depth:    1,
-			expected: -eval.Mate,
+			minScore: -eval.Mate,
+			maxScore: -eval.Mate,
 		},
 		{
 			name:     "stalemate",
 			fen:      "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1",
 			depth:    1,
-			expected: eval.Draw,
+			minScore: eval.Draw,
+			maxScore: eval.Draw,
 		},
 		{
 			name:     "mate in 2",
 			fen:      "7k/p7/5K2/8/8/8/8/R7 w - - 0 1",
 			depth:    4,
-			expected: eval.Mate - 3,
+			minScore: eval.Mate - 3,
+			maxScore: eval.Mate - 3,
 		},
 	}
 
@@ -122,8 +140,8 @@ func TestNegamax(t *testing.T) {
 				minimaxScore = -minimaxScore
 			}
 			score := searcher.negamax(pos, tt.depth, 0, -eval.Infinity, eval.Infinity)
-			if score != tt.expected {
-				t.Errorf("expected score %v, got %v", tt.expected, score)
+			if score < tt.minScore || score > tt.maxScore {
+				t.Errorf("expected score in [%v, %v], got %v", tt.minScore, tt.maxScore, score)
 			}
 			if score != minimaxScore {
 				t.Errorf("expected score to match minimax at %v, got %v", minimaxScore, score)

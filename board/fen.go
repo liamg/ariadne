@@ -172,6 +172,7 @@ func ParseFEN(fen string) (*Position, error) {
 	}
 
 	pos.state.zobristHash = GenerateZobristHash(pos)
+	pos.pastZobrist = append(pos.pastZobrist, pos.state.zobristHash)
 
 	return pos, nil
 }

@@ -7,17 +7,27 @@ import (
 
 // negamax returns a score from the perspective of the moving player - so a higher score means a better outcome for that player
 func (s *Searcher) negamax(pos *board.Position, depth int8, ply int, alpha, beta eval.Score) eval.Score {
-	s.state.NodeCount++
+	if ply > 0 && pos.HalfMoveClock() >= 100 {
+		s.state.NodeCount++
+		return eval.Draw
+	}
 
 	// once we've hit the depth limit, evaluate the position and stop
 	if depth <= 0 || ply >= MaxPly {
-		// TODO: i guess we need quiescence here eventually
-		return eval.Evaluate(pos)
+		return s.quiescence(pos, ply, alpha, beta)
 	}
 
-	// never abort early for the root node
-	if ply > 0 && s.state.Stop.Load() {
-		return 0
+	s.state.NodeCount++
+
+	if ply > 0 {
+		// never abort early for the root node
+		if s.state.Stop.Load() {
+			return 0
+		}
+
+		if pos.IsDrawByRepetition() {
+			return eval.Draw
+		}
 	}
 
 	var ttMove board.Move
@@ -46,19 +56,9 @@ func (s *Searcher) negamax(pos *board.Position, depth int8, ply int, alpha, beta
 		ttMove = entry.Move
 	}
 
-	// grab the buffer for this ply
-	moves := s.plyBuffers[ply][:0]
-
-	moves = pos.GeneratePseudoLegalMoves(moves)
-
+	picker := newMovePicker(moveGenTypeAllMoves, s.plyBuffers[ply][:0], s.scoreBuffers[ply][:0], pos)
 	if ttMove != board.NullMove {
-		// move ordering - try the best move from the transposition table first
-		for i, move := range moves {
-			if move == ttMove {
-				moves[0], moves[i] = moves[i], moves[0]
-				break
-			}
-		}
+		picker.setTTMove(ttMove)
 	}
 
 	bestScore := -eval.Infinity
@@ -66,10 +66,15 @@ func (s *Searcher) negamax(pos *board.Position, depth int8, ply int, alpha, beta
 	alphaOrig := alpha
 
 	var legalMoves int
-	for _, move := range moves {
+	for {
+		move, ok := picker.next()
+		if !ok {
+			break
+		}
 		undo := pos.MakeMove(move)
 		if !pos.IsLastMoveIllegal() {
 			legalMoves++
+			// NOTE: consider not decrementing depth when the enemy is in check here, as it's a promising branch...
 			score := -s.negamax(pos, depth-1, ply+1, -beta, -alpha)
 			if depth > 1 && s.state.Stop.Load() {
 				pos.UnmakeMove(undo)

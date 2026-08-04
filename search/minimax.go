@@ -6,15 +6,15 @@ import (
 )
 
 func (s *Searcher) minimax(pos *board.Position, depth int8, ply int) eval.Score {
-	s.state.NodeCount++
-
 	if depth <= 0 {
-		score := eval.Evaluate(pos)
+		score := s.quiescence(pos, ply, -eval.Infinity, eval.Infinity)
 		if pos.SideToMove() == board.Black {
 			score = -score
 		}
 		return score
 	}
+
+	s.state.NodeCount++
 
 	var moves []board.Move
 	if len(s.plyBuffers) <= ply {

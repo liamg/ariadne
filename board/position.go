@@ -14,6 +14,7 @@ type Position struct {
 	mailbox        [64]Piece
 	state          PositionState
 	kingSquare     [2]Square
+	pastZobrist    []uint64
 }
 
 type PositionState struct {
@@ -47,6 +48,7 @@ func EmptyPosition() *Position {
 		byColour:       [2]Bitboard{},
 		mailbox:        [64]Piece{},
 		kingSquare:     [2]Square{NoSquare, NoSquare},
+		pastZobrist:    make([]uint64, 0, 1024), // preallocate some space for past zobrist hashes
 	}
 	p.state.zobristHash = GenerateZobristHash(p)
 	return p
@@ -82,6 +84,7 @@ func StartingPosition() *Position {
 	pos.addPiece(H8, BlackRook)
 
 	pos.state.zobristHash = GenerateZobristHash(pos)
+	pos.pastZobrist = append(pos.pastZobrist, pos.state.zobristHash)
 
 	return pos
 }
@@ -221,6 +224,7 @@ func RandomPosition(rnd *rand.Rand) *Position {
 	}
 
 	pos.state.zobristHash = GenerateZobristHash(pos)
+	pos.pastZobrist = append(pos.pastZobrist, pos.state.zobristHash)
 
 	return pos
 }
@@ -377,6 +381,10 @@ func (p *Position) String() string {
 
 func (p *Position) PiecesByColour(colour Colour) Bitboard {
 	return p.byColour[colour]
+}
+
+func (p *Position) Pawns() Bitboard {
+	return p.byType[Pawn]
 }
 
 func (p *Position) Pieces(colour Colour, pieceType PieceType) Bitboard {
@@ -538,4 +546,50 @@ func (p *Position) SideToMove() Colour {
 
 func (p *Position) ZobristHash() uint64 {
 	return p.state.zobristHash
+}
+
+func (p *Position) EnPassantSquare() Square {
+	return p.state.enPassantSquare
+}
+
+func (p *Position) HalfMoveClock() uint8 {
+	return p.state.halfMoveClock
+}
+
+func (p *Position) IsDrawByRepetition() bool {
+	if len(p.pastZobrist) < 3 {
+		return false
+	}
+	lastMove := p.pastZobrist[len(p.pastZobrist)-1]
+
+	for index := len(p.pastZobrist) - 3; index >= max(0, (len(p.pastZobrist)-1)-int(p.state.halfMoveClock)); index -= 2 {
+		if p.pastZobrist[index] == lastMove {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (p *Position) Attacks(pieceType PieceType, sq Square) Bitboard {
+	return p.AttacksWithCustomOccupancy(pieceType, sq, p.Occupancy())
+}
+
+func (p *Position) AttacksWithCustomOccupancy(pieceType PieceType, sq Square, occ Bitboard) Bitboard {
+	switch pieceType {
+	case Pawn:
+		panic("pawn attacks require colour, use pawnAttacks[colour][square] instead")
+	case Knight:
+		return knightAttacks[sq]
+	case Bishop:
+		return bishopLookup(sq, occ)
+	case Rook:
+		return rookLookup(sq, occ)
+	case Queen:
+		return bishopLookup(sq, occ) | rookLookup(sq, occ)
+	case King:
+		return kingAttacks[sq]
+	default:
+		panic("invalid piece type")
+	}
 }

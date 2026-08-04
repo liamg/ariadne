@@ -182,3 +182,98 @@ func TestInCheck(t *testing.T) {
 		})
 	}
 }
+
+func TestIsDrawByRepetition(t *testing.T) {
+	tests := []struct {
+		name     string
+		fen      string
+		moves    []Move
+		expected bool
+	}{
+		{
+			name:     "no repetition",
+			fen:      "7k/8/8/8/8/8/8/K7 w - - 0 1",
+			moves:    []Move{},
+			expected: false,
+		},
+		{
+			// both kings walk out and back, so the start position recurs
+			name: "kings shuffle back to the start",
+			fen:  "7k/8/8/8/8/8/8/K7 w - - 0 1",
+			moves: []Move{
+				NewMove(A1, B1, QuietMove),
+				NewMove(H8, G8, QuietMove),
+				NewMove(B1, A1, QuietMove),
+				NewMove(G8, H8, QuietMove),
+			},
+			expected: true,
+		},
+		{
+			// one ply short - white is home but black is not, and it is black to move
+			name: "three plies is not yet a repetition",
+			fen:  "7k/8/8/8/8/8/8/K7 w - - 0 1",
+			moves: []Move{
+				NewMove(A1, B1, QuietMove),
+				NewMove(H8, G8, QuietMove),
+				NewMove(B1, A1, QuietMove),
+			},
+			expected: false,
+		},
+		{
+			// the pawn push resets the halfmove clock, then the kings shuffle back
+			// to the position that followed it. the clock bound must not cut the
+			// scan short before reaching it
+			name: "repetition of the position after an irreversible move",
+			fen:  "7k/8/8/8/8/8/P7/K7 w - - 0 1",
+			moves: []Move{
+				NewMove(A2, A3, QuietMove),
+				NewMove(H8, G8, QuietMove),
+				NewMove(A1, B1, QuietMove),
+				NewMove(G8, H8, QuietMove),
+				NewMove(B1, A1, QuietMove),
+			},
+			expected: true,
+		},
+		{
+			// same piece placement, but both sides lost castling rights on the way,
+			// so the zobrist keys differ and it is not a repetition
+			name: "same pieces but castling rights lost",
+			fen:  "4k2r/8/8/8/8/8/8/4K2R w Kk - 0 1",
+			moves: []Move{
+				NewMove(H1, G1, QuietMove),
+				NewMove(H8, G8, QuietMove),
+				NewMove(G1, H1, QuietMove),
+				NewMove(G8, H8, QuietMove),
+			},
+			expected: false,
+		},
+		{
+			// halfmove clock from the fen exceeds the history length - the scan
+			// bound must clamp at zero rather than indexing off the front
+			name: "high halfmove clock from fen",
+			fen:  "8/8/8/3k4/8/3K4/8/8 w - - 40 60",
+			moves: []Move{
+				NewMove(D3, C3, QuietMove),
+				NewMove(D5, C5, QuietMove),
+			},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			pos, err := ParseFEN(test.fen)
+			if err != nil {
+				t.Fatalf("Failed to parse FEN: %v", err)
+			}
+
+			for _, move := range test.moves {
+				pos.MakeMove(move)
+			}
+
+			if got := pos.IsDrawByRepetition(); got != test.expected {
+				t.Errorf("IsDrawByRepetition() = %v, want %v", got, test.expected)
+			}
+		})
+	}
+}
