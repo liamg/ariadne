@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	fenEmpty    = `8/8/8/8/8/8/8/8 w - - 0 1`
-	fenStarting = `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`
-	fenKiwiPete = `r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1`
+	FenEmpty    = `8/8/8/8/8/8/8/8 w - - 0 1`
+	FenStarting = `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`
+	FenKiwiPete = `r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1`
 )
 
 func ParseFEN(fen string) (*Position, error) {
@@ -164,6 +164,15 @@ func ParseFEN(fen string) (*Position, error) {
 			pos.fullMoveNumber = int(fm)
 		}
 	}
+
+	pos.tidy()
+
+	if err := pos.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid FEN: %v", err)
+	}
+
+	pos.state.zobristHash = GenerateZobristHash(pos)
+	pos.pastZobrist = append(pos.pastZobrist, pos.state.zobristHash)
 
 	return pos, nil
 }

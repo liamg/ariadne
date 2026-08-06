@@ -169,6 +169,29 @@ func (f File) String() string {
 	return string('a' + rune(f))
 }
 
+func (f File) Mask() Bitboard {
+	switch f {
+	case FileA:
+		return FileAMask
+	case FileB:
+		return FileBMask
+	case FileC:
+		return FileCMask
+	case FileD:
+		return FileDMask
+	case FileE:
+		return FileEMask
+	case FileF:
+		return FileFMask
+	case FileG:
+		return FileGMask
+	case FileH:
+		return FileHMask
+	default:
+		panic(fmt.Sprintf("invalid file: %d", f))
+	}
+}
+
 // Rank is a horizontal row of the board, numbered 1-8 from White's perspective.
 // Rank1 is the first rank (White's home rank), and Rank8 is the eighth rank (Black's home rank).
 // NOTE: the actual backing value of a Rank is 0-7, not 1-8, so be careful when using it as an index.

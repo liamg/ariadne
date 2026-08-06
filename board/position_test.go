@@ -183,74 +183,80 @@ func TestInCheck(t *testing.T) {
 	}
 }
 
-func TestValidateEnPassantSquare(t *testing.T) {
-	// The en passant target sits behind the pawn that made the double push, so the
-	// pawn is always on the far side of the target from where it started: one rank
-	// north of a rank 3 target, one rank south of a rank 6 target. It is never on
-	// the square it pushed from.
+func TestIsDrawByRepetition(t *testing.T) {
 	tests := []struct {
-		name        string
-		fen         string
-		expectedErr string // empty means the position is expected to validate
+		name     string
+		fen      string
+		moves    []Move
+		expected bool
 	}{
 		{
-			name: "white double push leaves its pawn north of the target",
-			fen:  "7k/8/8/8/2P5/8/8/K7 b - c3 0 1",
+			name:     "no repetition",
+			fen:      "7k/8/8/8/8/8/8/K7 w - - 0 1",
+			moves:    []Move{},
+			expected: false,
 		},
 		{
-			name: "black double push leaves its pawn south of the target",
-			fen:  "7k/8/8/2p5/8/8/8/K7 w - c6 0 1",
-		},
-
-		// A pawn sitting on the square it pushed *from* rather than the one it pushed
-		// to. These two are the positions an inverted north/south check accepts.
-		{
-			name:        "white pawn still on its starting square",
-			fen:         "7k/8/8/8/8/8/2P5/K7 b - c3 0 1",
-			expectedErr: "there is no white pawn on c4",
-		},
-		{
-			name:        "black pawn still on its starting square",
-			fen:         "7k/2p5/8/8/8/8/8/K7 w - c6 0 1",
-			expectedErr: "there is no black pawn on c5",
-		},
-
-		{
-			name:        "no pawn anywhere near the target",
-			fen:         "7k/8/8/8/8/8/8/K7 b - c3 0 1",
-			expectedErr: "there is no white pawn on c4",
+			// both kings walk out and back, so the start position recurs
+			name: "kings shuffle back to the start",
+			fen:  "7k/8/8/8/8/8/8/K7 w - - 0 1",
+			moves: []Move{
+				NewMove(A1, B1, QuietMove),
+				NewMove(H8, G8, QuietMove),
+				NewMove(B1, A1, QuietMove),
+				NewMove(G8, H8, QuietMove),
+			},
+			expected: true,
 		},
 		{
-			// occupancy alone is not enough, the piece has to be a pawn of the colour
-			// that could have made the push
-			name:        "wrong coloured pawn behind the target",
-			fen:         "7k/8/8/8/2p5/8/8/K7 b - c3 0 1",
-			expectedErr: "there is no white pawn on c4",
+			// one ply short - white is home but black is not, and it is black to move
+			name: "three plies is not yet a repetition",
+			fen:  "7k/8/8/8/8/8/8/K7 w - - 0 1",
+			moves: []Move{
+				NewMove(A1, B1, QuietMove),
+				NewMove(H8, G8, QuietMove),
+				NewMove(B1, A1, QuietMove),
+			},
+			expected: false,
 		},
 		{
-			// only a double push creates a target, so only ranks 3 and 6 are reachable
-			name:        "target square on an impossible rank",
-			fen:         "7k/8/8/8/8/8/8/K7 b - c4 0 1",
-			expectedErr: "is not on rank 3 or 6",
+			// the pawn push resets the halfmove clock, then the kings shuffle back
+			// to the position that followed it. the clock bound must not cut the
+			// scan short before reaching it
+			name: "repetition of the position after an irreversible move",
+			fen:  "7k/8/8/8/8/8/P7/K7 w - - 0 1",
+			moves: []Move{
+				NewMove(A2, A3, QuietMove),
+				NewMove(H8, G8, QuietMove),
+				NewMove(A1, B1, QuietMove),
+				NewMove(G8, H8, QuietMove),
+				NewMove(B1, A1, QuietMove),
+			},
+			expected: true,
 		},
 		{
-			// the pawn passed over the target square, so nothing can be standing on it
-			name:        "piece standing on the target square",
-			fen:         "7k/8/8/8/2P5/2n5/8/K7 b - c3 0 1",
-			expectedErr: "there is a piece on that square",
+			// same piece placement, but both sides lost castling rights on the way,
+			// so the zobrist keys differ and it is not a repetition
+			name: "same pieces but castling rights lost",
+			fen:  "4k2r/8/8/8/8/8/8/4K2R w Kk - 0 1",
+			moves: []Move{
+				NewMove(H1, G1, QuietMove),
+				NewMove(H8, G8, QuietMove),
+				NewMove(G1, H1, QuietMove),
+				NewMove(G8, H8, QuietMove),
+			},
+			expected: false,
 		},
 		{
-			// the pawn that pushed vacated this square, so it cannot still be occupied
-			name:        "piece left on the square the pawn pushed from",
-			fen:         "7k/8/8/8/2P5/8/2P5/K7 b - c3 0 1",
-			expectedErr: "there is a piece on c2",
-		},
-		{
-			// a rank 3 target can only come from a white double push, which means it is
-			// black's turn - white to move implies a black push and a rank 6 target
-			name:        "target rank contradicts the side to move",
-			fen:         "7k/8/8/8/2P5/8/8/K7 w - c3 0 1",
-			expectedErr: "not on rank 6 when it is white's turn to move",
+			// halfmove clock from the fen exceeds the history length - the scan
+			// bound must clamp at zero rather than indexing off the front
+			name: "high halfmove clock from fen",
+			fen:  "8/8/8/3k4/8/3K4/8/8 w - - 40 60",
+			moves: []Move{
+				NewMove(D3, C3, QuietMove),
+				NewMove(D5, C5, QuietMove),
+			},
+			expected: false,
 		},
 	}
 
@@ -261,14 +267,12 @@ func TestValidateEnPassantSquare(t *testing.T) {
 				t.Fatalf("Failed to parse FEN: %v", err)
 			}
 
-			err = pos.Validate()
-			switch {
-			case test.expectedErr == "" && err != nil:
-				t.Errorf("Expected position to validate, but got: %v", err)
-			case test.expectedErr != "" && err == nil:
-				t.Errorf("Expected validation to fail containing '%s', but it passed", test.expectedErr)
-			case test.expectedErr != "" && !strings.Contains(err.Error(), test.expectedErr):
-				t.Errorf("Expected error to contain '%s', but got: %v", test.expectedErr, err)
+			for _, move := range test.moves {
+				pos.MakeMove(move)
+			}
+
+			if got := pos.IsDrawByRepetition(); got != test.expected {
+				t.Errorf("IsDrawByRepetition() = %v, want %v", got, test.expected)
 			}
 		})
 	}

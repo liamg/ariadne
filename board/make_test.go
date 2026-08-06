@@ -206,7 +206,7 @@ func TestMakeUnmakeRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse FEN: %v", err)
 			}
-			before := *pos
+			before := GenerateFEN(pos)
 
 			undo := pos.MakeMove(test.move)
 			if err := pos.validateStateSlow(); err != nil {
@@ -218,9 +218,9 @@ func TestMakeUnmakeRoundTrip(t *testing.T) {
 				t.Fatalf("Position corrupt after UnmakeMove: %v", err)
 			}
 
-			if *pos != before {
+			if fen := GenerateFEN(pos); fen != before {
 				t.Errorf("Position not restored.\nExpected FEN: %s\nGot FEN:      %s",
-					GenerateFEN(&before), GenerateFEN(pos))
+					before, fen)
 			}
 		})
 	}
@@ -295,7 +295,7 @@ func TestMakeUnmakeSequence(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse FEN: %v", err)
 			}
-			before := *pos
+			before := GenerateFEN(pos)
 
 			undos := make([]Undo, 0, len(test.moves))
 			for i, move := range test.moves {
@@ -312,9 +312,9 @@ func TestMakeUnmakeSequence(t *testing.T) {
 				}
 			}
 
-			if *pos != before {
+			if fen := GenerateFEN(pos); fen != before {
 				t.Errorf("Position not restored after %d moves.\nExpected FEN: %s\nGot FEN:      %s",
-					len(test.moves), GenerateFEN(&before), GenerateFEN(pos))
+					len(test.moves), before, fen)
 			}
 		})
 	}

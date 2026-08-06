@@ -567,6 +567,9 @@ func TestGeneratePseudoLegalMoves(t *testing.T) {
 				if !moveMap[expectedMove] {
 					t.Errorf("Expected move %v not found in generated moves", expectedMove)
 				}
+				if !pos.IsPseudoLegalMove(expectedMove) {
+					t.Errorf("Expected move %v is not pseudo-legal", expectedMove)
+				}
 			}
 		})
 	}
@@ -672,6 +675,190 @@ func TestGenerateLegalMoves(t *testing.T) {
 			}
 			if err := pos.validateStateSlow(); err != nil {
 				t.Errorf("Position state corrupt after GenerateLegalMoves: %v", err)
+			}
+		})
+	}
+}
+
+func BenchmarkGeneratePseudoLegalMoves(b *testing.B) {
+	for _, test := range perftCases {
+		b.Run(test.name, func(b *testing.B) {
+			pos, err := ParseFEN(test.fen)
+			if err != nil {
+				b.Fatalf("Failed to parse FEN: %v", err)
+			}
+			moves := make([]Move, 0, 256)
+			b.ResetTimer()
+			for b.Loop() {
+				moves = pos.GeneratePseudoLegalMoves(moves)
+			}
+			b.StopTimer()
+			// use moves to stop it being optimised out by the compiler
+			if len(moves) == 0 {
+				b.Error("No moves generated")
+			}
+		})
+	}
+}
+
+func TestGeneratePseudoLegalCapturesAndPromotions(t *testing.T) {
+	tests := []struct {
+		name          string
+		fen           string
+		expectedMoves []Move
+	}{
+		{
+			name:          "initial position",
+			fen:           "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			expectedMoves: []Move{},
+		},
+		{
+			name:          "lone knight in the centre",
+			fen:           "7k/8/8/8/3N4/8/8/K7 w - - 0 1",
+			expectedMoves: []Move{},
+		},
+		{
+			name: "rook rays blocked by an enemy pawn",
+			fen:  "7k/8/8/3p4/3R4/8/8/K7 w - - 0 1",
+			expectedMoves: []Move{
+				// rook on d4, north ray ends on the capture
+				NewMove(D4, D5, Capture),
+			},
+		},
+		{
+			name:          "bishop rays blocked by own king",
+			fen:           "k7/8/8/8/3B4/8/8/K7 w - - 0 1",
+			expectedMoves: []Move{},
+		},
+		{
+			name: "promotions, quiet and capturing both ways",
+			fen:  "r1n5/1P6/8/7k/8/8/8/4K3 w - - 0 1",
+			expectedMoves: []Move{
+				// quiet promotions onto the empty b8
+				NewMove(B7, B8, KnightPromotion),
+				NewMove(B7, B8, BishopPromotion),
+				NewMove(B7, B8, RookPromotion),
+				NewMove(B7, B8, QueenPromotion),
+				// capturing the rook on a8
+				NewMove(B7, A8, KnightPromotionCapture),
+				NewMove(B7, A8, BishopPromotionCapture),
+				NewMove(B7, A8, RookPromotionCapture),
+				NewMove(B7, A8, QueenPromotionCapture),
+				// capturing the knight on c8
+				NewMove(B7, C8, KnightPromotionCapture),
+				NewMove(B7, C8, BishopPromotionCapture),
+				NewMove(B7, C8, RookPromotionCapture),
+				NewMove(B7, C8, QueenPromotionCapture),
+			},
+		},
+		{
+			name: "en passant available",
+			fen:  "7k/8/8/3pP3/8/8/8/K7 w - d6 0 1",
+			expectedMoves: []Move{
+				NewMove(E5, D6, EnPassantCapture),
+			},
+		},
+		{
+			name: "both castles available",
+			fen:  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+			expectedMoves: []Move{
+				NewMove(A1, A8, Capture),
+				NewMove(H1, H8, Capture),
+			},
+		},
+		{
+			// the mirror of the position above, so that the black branch of the
+			// castling code is exercised rather than only the white one
+			name: "both castles available for black",
+			fen:  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",
+			expectedMoves: []Move{
+				NewMove(A8, A1, Capture),
+				NewMove(H8, H1, Capture),
+			},
+		},
+		{
+			// two of the knight's eight targets hold enemy pawns, so each must
+			// appear exactly once, as a capture and not also as a quiet move
+			name: "knight with captures among its targets",
+			fen:  "7k/8/2p1p3/8/3N4/8/8/K7 w - - 0 1",
+			expectedMoves: []Move{
+				NewMove(D4, C6, Capture),
+				NewMove(D4, E6, Capture),
+			},
+		},
+		{
+			// the king's capture loop is otherwise never exercised
+			name: "king with captures among its targets",
+			fen:  "7k/8/8/2n1n3/3K4/8/8/8 w - - 0 1",
+			expectedMoves: []Move{
+				NewMove(D4, C5, Capture),
+				NewMove(D4, E5, Capture),
+			},
+		},
+		{
+			// b2 cannot push at all; c2 can push but its double is blocked on c4
+			name: "blocked pawn pushes",
+			fen:  "7k/8/8/8/2n5/1n6/PPP5/K7 w - - 0 1",
+			expectedMoves: []Move{
+				NewMove(A2, B3, Capture),
+				NewMove(C2, B3, Capture),
+			},
+		},
+		{
+			// the mirror, so black pawn direction is exercised
+			name: "blocked pawn pushes for black",
+			fen:  "k7/ppp5/1N6/2N5/8/8/8/7K b - - 0 1",
+			expectedMoves: []Move{
+				NewMove(A7, B6, Capture),
+				NewMove(C7, B6, Capture),
+			},
+		},
+		{
+			// an a file pawn must not capture "west" onto the h file
+			name:          "pawn capture does not wrap the board",
+			fen:           "7k/8/8/8/8/7n/P7/K7 w - - 0 1",
+			expectedMoves: []Move{},
+		},
+		{
+			// black capturing en passant, the mirror of the white case above
+			name: "en passant available for black",
+			fen:  "7k/8/8/8/3Pp3/8/8/K7 b - d3 0 1",
+			expectedMoves: []Move{
+				NewMove(E4, D3, EnPassantCapture),
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			pos, err := ParseFEN(test.fen)
+			if err != nil {
+				t.Fatalf("Failed to parse FEN: %v", err)
+			}
+
+			moves := make([]Move, 0, 256)
+			moves = pos.GeneratePseudoLegalCapturesAndPromotions(moves)
+			if len(moves) != len(test.expectedMoves) {
+				t.Errorf("Expected %d captures/promos, got %d", len(test.expectedMoves), len(moves))
+			}
+
+			expectedMap := make(map[Move]bool, len(test.expectedMoves))
+			for _, expectedMove := range test.expectedMoves {
+				expectedMap[expectedMove] = true
+			}
+
+			moveMap := make(map[Move]bool)
+			for _, move := range moves {
+				if _, ok := expectedMap[move]; !ok {
+					t.Errorf("Unexpected move generated: %v", move)
+				}
+				moveMap[move] = true
+			}
+
+			for _, expectedMove := range test.expectedMoves {
+				if !moveMap[expectedMove] {
+					t.Errorf("Expected move %v not found in generated moves", expectedMove)
+				}
 			}
 		})
 	}
