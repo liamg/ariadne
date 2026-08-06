@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/liamg/chess/board"
-	"github.com/liamg/chess/eval"
+	"github.com/liamg/ariadne/board"
+	"github.com/liamg/ariadne/eval"
 )
 
 func TestSearch(t *testing.T) {
@@ -14,7 +14,7 @@ func TestSearch(t *testing.T) {
 		name         string
 		fen          string
 		expectedMove string
-		depth        int8
+		depth        int
 	}{
 		{
 			name:         "wins hanging queen",
@@ -197,7 +197,7 @@ func TestSearchWithPlyRelativeScore(t *testing.T) {
 		fen           string
 		expectedMove  string
 		expectedScore eval.Score
-		depth         int8
+		depth         int
 	}{
 		{
 			name:          "white mates in 2",

@@ -1,7 +1,7 @@
 package search
 
 import (
-	"github.com/liamg/chess/board"
+	"github.com/liamg/ariadne/board"
 )
 
 type movePicker struct {

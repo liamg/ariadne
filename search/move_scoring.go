@@ -1,6 +1,6 @@
 package search
 
-import "github.com/liamg/chess/board"
+import "github.com/liamg/ariadne/board"
 
 type orderScore int32 // deliberately different type to eval.Score
 

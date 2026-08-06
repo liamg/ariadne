@@ -3,8 +3,8 @@ package search
 import (
 	"testing"
 
-	"github.com/liamg/chess/board"
-	"github.com/liamg/chess/eval"
+	"github.com/liamg/ariadne/board"
+	"github.com/liamg/ariadne/eval"
 )
 
 // relations against the static eval, so these survive any eval change

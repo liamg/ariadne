@@ -1,0 +1,65 @@
+version: 2
+
+project_name: ariadne
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: ariadne
+    main: .
+    binary: ariadne
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/liamg/ariadne/version.Version={{ .Version }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # v1 is the portable baseline; v3 lets the compiler assume POPCNT/LZCNT
+    # exist rather than guarding them behind a runtime CPU check.
+    goamd64:
+      - v1
+      - v3
+
+archives:
+  - id: ariadne
+    ids:
+      - ariadne
+    # The default template omits the amd64 variant, so v1 and v3 would collide.
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+      {{- if and (eq .Arch "amd64") (ne .Amd64 "v1") }}_{{ .Amd64 }}{{ end }}
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+release:
+  # v1.0.0-rc1 and friends are published as prereleases automatically.
+  prerelease: auto

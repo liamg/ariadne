@@ -5,8 +5,8 @@ import (
 	"math/bits"
 	"unsafe"
 
-	"github.com/liamg/chess/board"
-	"github.com/liamg/chess/eval"
+	"github.com/liamg/ariadne/board"
+	"github.com/liamg/ariadne/eval"
 )
 
 type bound uint8
@@ -67,7 +67,7 @@ func (t *transpositionTable) reset() {
 	}
 }
 
-func (t *transpositionTable) store(key uint64, score int16, move board.Move, depth int8, bound bound, age uint8, ply int) {
+func (t *transpositionTable) store(key uint64, score int16, move board.Move, depth int, bound bound, age uint8, ply int) {
 	cluster := &t.data[key&uint64(len(t.data)-1)]
 
 	targetIndex := -1
@@ -83,14 +83,14 @@ func (t *transpositionTable) store(key uint64, score int16, move board.Move, dep
 		if entry.Key == key {
 			// ...but only if the new result is at least as deep
 			// we don't want to overwrite valuable info with a crappy shallow search
-			if depth < entry.Depth {
+			if depth < int(entry.Depth) {
 				return
 			}
 			cluster[i] = transpositionTableEntry{
 				Key:   key,
 				Score: scoreToTT(score, ply),
 				Move:  move,
-				Depth: depth,
+				Depth: int8(depth),
 				Bound: bound,
 				Birth: age,
 			}
@@ -108,7 +108,7 @@ func (t *transpositionTable) store(key uint64, score int16, move board.Move, dep
 		Key:   key,
 		Score: scoreToTT(score, ply),
 		Move:  move,
-		Depth: depth,
+		Depth: int8(depth),
 		Bound: bound,
 		Birth: age,
 	}

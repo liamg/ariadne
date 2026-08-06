@@ -3,8 +3,8 @@ package search
 import (
 	"testing"
 
-	"github.com/liamg/chess/board"
-	"github.com/liamg/chess/eval"
+	"github.com/liamg/ariadne/board"
+	"github.com/liamg/ariadne/eval"
 )
 
 // bands, not exact values, so eval retuning doesn't churn these.
@@ -14,7 +14,7 @@ func TestNegamax(t *testing.T) {
 	tests := []struct {
 		name     string
 		fen      string
-		depth    int8
+		depth    int
 		minScore eval.Score
 		maxScore eval.Score
 	}{

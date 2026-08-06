@@ -3,7 +3,7 @@ package eval
 import (
 	"testing"
 
-	"github.com/liamg/chess/board"
+	"github.com/liamg/ariadne/board"
 )
 
 // obvious per-file implementations, kept as the reference the bitboard versions
