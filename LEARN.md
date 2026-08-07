@@ -224,11 +224,11 @@ idea with a hidden layer bolted on.
 **This is the phase that separates an engine from a toy.** Everything after it depends on
 being able to answer "did that change help?" honestly.
 
-- [ ] UCI protocol: `uci`, `isready`, `position`, `go`, `stop`, `bestmove`
-- [ ] Time management: allocate per move, respect increment, stop cleanly
-- [ ] Run under a GUI (Cute Chess, Arena, Banksia)
-- [ ] Get an opening book / EPD position set so games aren't all identical
-- [ ] Automated engine-vs-engine matches with `fastchess`
+- [x] UCI protocol: `uci`, `isready`, `position`, `go`, `stop`, `bestmove`
+- [x] Time management: allocate per move, respect increment, stop cleanly
+- [x] Run under a GUI (Cute Chess, Arena, Banksia)
+- [x] Get an opening book / EPD position set so games aren't all identical
+- [x] Automated engine-vs-engine matches with `fastchess`
 - [ ] **Set up SPRT and use it for every single change from here on**
 
 ### The maths you need here, properly

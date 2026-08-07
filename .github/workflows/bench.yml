@@ -1,0 +1,198 @@
+name: bench
+
+on:
+  pull_request:
+    # deliberately NOT "edited" - this workflow edits the PR title, which would
+    # retrigger it forever.
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: bench-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    name: bench
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Full history, so the PR base commit is available to build.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build head
+        run: go build -o "${RUNNER_TEMP}/ariadne-head" .
+
+      - name: Build base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -uo pipefail
+
+          git worktree add "${RUNNER_TEMP}/base" "${BASE_SHA}"
+
+          # The base may not build a binary at all - it may predate the bench
+          # command, or predate cmd/main entirely. That is not a failure, it just
+          # means there is no baseline to compare against.
+          if (cd "${RUNNER_TEMP}/base" && go build -o "${RUNNER_TEMP}/ariadne-base" .); then
+            echo "base binary built"
+          else
+            echo "::notice::base ${BASE_SHA:0:7} does not build a binary - no baseline available"
+            rm -f "${RUNNER_TEMP}/ariadne-base"
+          fi
+
+      - name: Run bench
+        id: bench
+        run: |
+          set -euo pipefail
+
+          run_bench() {
+            # stdin closed plus a hard timeout: a base predating the bench
+            # command can fall through to the UCI loop and block forever.
+            timeout 600 "$1" bench < /dev/null \
+              | awk '/^Total nodes searched/ { print $NF }'
+          }
+
+          # A silently-empty or non-numeric head result would produce a nonsense
+          # PR title, so fail loudly.
+          head_nodes="$(run_bench "${RUNNER_TEMP}/ariadne-head")"
+          if ! [[ "${head_nodes}" =~ ^[0-9]+$ ]]; then
+            echo "::error::could not parse head bench node count (got '${head_nodes}')"
+            exit 1
+          fi
+
+          base_nodes=""
+          if [[ -x "${RUNNER_TEMP}/ariadne-base" ]]; then
+            base_nodes="$(run_bench "${RUNNER_TEMP}/ariadne-base" || true)"
+          fi
+
+          if ! [[ "${base_nodes}" =~ ^[0-9]+$ ]]; then
+            # No usable baseline. Assume the worst - a functional change needing
+            # SPRT - and leave the checkbox for a human to decide.
+            changed=true
+            base_display="n/a"
+            suffix="bench=${head_nodes}"
+            verdict="no baseline - the base has no runnable bench. Assuming functional; tick the box by hand if it is not."
+          elif [[ "${head_nodes}" == "${base_nodes}" ]]; then
+            changed=false
+            base_display="${base_nodes}"
+            suffix="bench=none"
+            verdict="unchanged - non-functional change, no SPRT needed"
+          else
+            changed=true
+            base_display="${base_nodes}"
+            suffix="bench=${head_nodes}"
+            verdict="changed - functional change, SPRT required"
+          fi
+
+          echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
+          echo "suffix=${suffix}" >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "| | nodes |"
+            echo "|---|---|"
+            echo "| base (\`${BASE_SHA:0:7}\`) | ${base_display} |"
+            echo "| head | ${head_nodes} |"
+            echo
+            echo "**${verdict}**"
+          } >> "${GITHUB_STEP_SUMMARY}"
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+
+      - name: Sync SPRT checkbox
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          CHANGED: ${{ steps.bench.outputs.changed }}
+        run: |
+          set -euo pipefail
+
+          gh pr view "${PR}" --json body --jq .body > "${RUNNER_TEMP}/body.md"
+
+          python3 - "${RUNNER_TEMP}/body.md" "${RUNNER_TEMP}/body.new.md" <<'PY'
+          import os
+          import re
+          import sys
+
+          src, dst = sys.argv[1], sys.argv[2]
+          changed = os.environ["CHANGED"] == "true"
+
+          MARKER = " (no bench change)"
+          LINE = re.compile(r"^(\s*[-*]\s*\[)([ xX])(\]\s*SPRT verified)(.*)$")
+
+          # newline="" disables universal-newline translation. GitHub bodies are
+          # CRLF, and rewriting them as LF would churn the whole body on every run.
+          with open(src, encoding="utf-8", newline="") as fh:
+              body = fh.read()
+
+          out, found = [], False
+          for line in body.splitlines(keepends=True):
+              m = LINE.match(line.rstrip("\r\n"))
+              if not m:
+                  out.append(line)
+                  continue
+
+              found = True
+              eol = line[len(line.rstrip("\r\n")):]
+              head, _, label, tail = m.groups()
+
+              if not changed:
+                  # Non-functional change - tick it and say why.
+                  out.append(f"{head}x{label}{MARKER}{eol}")
+              elif tail.strip() == MARKER.strip():
+                  # We ticked this earlier when bench was unchanged, but the head
+                  # has since become functional. Undo our own tick - never a
+                  # human's.
+                  out.append(f"{head} {label}{eol}")
+              else:
+                  out.append(line)
+
+          if not found:
+              print("::warning::no 'SPRT verified' checkbox found in PR body")
+
+          with open(dst, "w", encoding="utf-8", newline="") as fh:
+              fh.writelines(out)
+          PY
+
+          if cmp -s "${RUNNER_TEMP}/body.md" "${RUNNER_TEMP}/body.new.md"; then
+            echo "checkbox already correct"
+          else
+            gh pr edit "${PR}" --body-file "${RUNNER_TEMP}/body.new.md"
+            echo "checkbox synced (bench changed: ${CHANGED})"
+          fi
+
+      - name: Update PR title
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          SUFFIX: ${{ steps.bench.outputs.suffix }}
+        run: |
+          set -euo pipefail
+
+          current="$(gh pr view "${PR}" --json title --jq .title)"
+
+          # Strip any suffix a previous run left behind, so repeated runs replace
+          # rather than accumulate.
+          stripped="$(printf '%s' "${current}" | sed -E 's/ \(bench=[^)]*\)$//')"
+          updated="${stripped} (${SUFFIX})"
+
+          if [[ "${updated}" == "${current}" ]]; then
+            echo "title already up to date: ${current}"
+            exit 0
+          fi
+
+          gh pr edit "${PR}" --title "${updated}"
+          echo "title updated: ${updated}"

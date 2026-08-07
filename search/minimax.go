@@ -1,11 +1,11 @@
 package search
 
 import (
-	"github.com/liamg/chess/board"
-	"github.com/liamg/chess/eval"
+	"github.com/liamg/ariadne/board"
+	"github.com/liamg/ariadne/eval"
 )
 
-func (s *Searcher) minimax(pos *board.Position, depth int8, ply int) eval.Score {
+func (s *Searcher) minimax(pos *board.Position, depth int, ply int) eval.Score {
 	if depth <= 0 {
 		score := s.quiescence(pos, ply, -eval.Infinity, eval.Infinity)
 		if pos.SideToMove() == board.Black {

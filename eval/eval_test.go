@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/liamg/chess/board"
+	"github.com/liamg/ariadne/board"
 )
 
 // swap colours, flip the board vertically

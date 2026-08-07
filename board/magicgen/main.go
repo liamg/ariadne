@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/liamg/chess/board"
+	"github.com/liamg/ariadne/board"
 )
 
 func main() {

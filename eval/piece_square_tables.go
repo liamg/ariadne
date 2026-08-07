@@ -1,6 +1,6 @@
 package eval
 
-import "github.com/liamg/chess/board"
+import "github.com/liamg/ariadne/board"
 
 const (
 	ScoreKing   Score = 0

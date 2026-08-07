@@ -1,12 +1,12 @@
 package search
 
 import (
-	"github.com/liamg/chess/board"
-	"github.com/liamg/chess/eval"
+	"github.com/liamg/ariadne/board"
+	"github.com/liamg/ariadne/eval"
 )
 
 // negamax returns a score from the perspective of the moving player - so a higher score means a better outcome for that player
-func (s *Searcher) negamax(pos *board.Position, depth int8, ply int, alpha, beta eval.Score) eval.Score {
+func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta eval.Score) eval.Score {
 	if ply > 0 && pos.HalfMoveClock() >= 100 {
 		s.state.NodeCount++
 		return eval.Draw
@@ -20,6 +20,11 @@ func (s *Searcher) negamax(pos *board.Position, depth int8, ply int, alpha, beta
 	s.state.NodeCount++
 
 	if ply > 0 {
+		if s.state.NodeLimit > 0 && s.state.NodeCount >= s.state.NodeLimit {
+			s.state.Stop.Store(true)
+			return 0
+		}
+
 		// never abort early for the root node
 		if s.state.Stop.Load() {
 			return 0
@@ -34,7 +39,7 @@ func (s *Searcher) negamax(pos *board.Position, depth int8, ply int, alpha, beta
 
 	if entry, ok := s.tt.probe(pos.ZobristHash(), ply); ok {
 		// only cutoff if we're deep enough and non-root - otherwise we have no move
-		if ply > 0 && entry.Depth >= depth {
+		if ply > 0 && int(entry.Depth) >= depth {
 
 			score := eval.Score(entry.Score)
 

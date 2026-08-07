@@ -1,8 +1,8 @@
 package search
 
 import (
-	"github.com/liamg/chess/board"
-	"github.com/liamg/chess/eval"
+	"github.com/liamg/ariadne/board"
+	"github.com/liamg/ariadne/eval"
 )
 
 func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Score) eval.Score {
@@ -10,6 +10,10 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 
 	if ply >= MaxPly {
 		return eval.Evaluate(pos)
+	}
+
+	if ply > s.state.maxPly {
+		s.state.maxPly = ply
 	}
 
 	var quietScore eval.Score

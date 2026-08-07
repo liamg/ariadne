@@ -3,8 +3,8 @@ package search
 import (
 	"testing"
 
-	"github.com/liamg/chess/board"
-	"github.com/liamg/chess/eval"
+	"github.com/liamg/ariadne/board"
+	"github.com/liamg/ariadne/eval"
 )
 
 // minimax is white relative, so bands are signed from white's side.
@@ -14,7 +14,7 @@ func TestMinimax(t *testing.T) {
 	tests := []struct {
 		name     string
 		fen      string
-		depth    int8
+		depth    int
 		minScore eval.Score
 		maxScore eval.Score
 	}{

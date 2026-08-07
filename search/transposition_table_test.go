@@ -6,7 +6,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/liamg/chess/board"
+	"github.com/liamg/ariadne/board"
 )
 
 func TestTranspositionTableEntrySize(t *testing.T) {
@@ -136,9 +136,9 @@ func TestTranspositionTableReset(t *testing.T) {
 func TestTranspositionTableReplacement(t *testing.T) {
 	tests := []struct {
 		name           string
-		initialDepth   int8
+		initialDepth   int
 		initialBirth   int8
-		newDepth       int8
+		newDepth       int
 		newBirth       int8
 		expectReplaced bool
 	}{
@@ -189,7 +189,7 @@ func TestTranspositionTableReplacement(t *testing.T) {
 func TestTranspositionTableEvictsShallowestFromCluster(t *testing.T) {
 	tt := newTranspositionTable(1)
 	for i := range transpositionTableClusterSize {
-		tt.store(123+uint64(i*len(tt.data)), int16(i), board.NewMove(board.A1+board.Square(i), board.A2+board.Square(i), board.Capture), 20-int8(i), exact, 1, 1)
+		tt.store(123+uint64(i*len(tt.data)), int16(i), board.NewMove(board.A1+board.Square(i), board.A2+board.Square(i), board.Capture), 20-i, exact, 1, 1)
 	}
 	tt.store(123+uint64(transpositionTableClusterSize*len(tt.data)), int16(100), board.NewMove(board.A1, board.A2, board.Capture), 5, exact, 1, 1)
 	retrieved, ok := tt.probe(123+uint64(transpositionTableClusterSize*len(tt.data)), 1)
@@ -302,7 +302,7 @@ func TestTranspositionTableFuzz(t *testing.T) {
 			Birth: age,
 		}
 		store[key] = entry
-		tt.store(key, entry.Score, entry.Move, entry.Depth, entry.Bound, entry.Birth, 1)
+		tt.store(key, entry.Score, entry.Move, int(entry.Depth), entry.Bound, entry.Birth, 1)
 
 		if i&0xffff == 0 {
 			age++
