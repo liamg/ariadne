@@ -2,12 +2,15 @@ name: bench
 
 on:
   pull_request:
-    # deliberately NOT "edited" - this workflow edits the PR title, which would
-    # retrigger it forever.
-    types: [opened, synchronize, reopened]
+    # "edited" is needed so that ticking the SPRT box re-evaluates the gate.
+    # This cannot loop: GitHub does not trigger workflow runs from actions
+    # performed with GITHUB_TOKEN, so this workflow's own title and body edits
+    # are inert.
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
+  packages: read
   pull-requests: write
 
 concurrency:
@@ -18,6 +21,9 @@ jobs:
   bench:
     name: bench
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.bench.outputs.changed }}
+      has-baseline: ${{ steps.bench.outputs.has-baseline }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -98,6 +104,8 @@ jobs:
 
           echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
           echo "suffix=${suffix}" >> "${GITHUB_OUTPUT}"
+          echo "has-baseline=$([[ "${base_display}" == "n/a" ]] && echo false || echo true)" \
+            >> "${GITHUB_OUTPUT}"
 
           {
             echo "| | nodes |"
@@ -196,3 +204,121 @@ jobs:
 
           gh pr edit "${PR}" --title "${updated}"
           echo "title updated: ${updated}"
+
+  # Only runs when bench says the search actually changed. Tooling, docs and
+  # no-op refactors skip it entirely, which is the difference between every PR
+  # taking minutes and every PR taking hours.
+  smoke:
+    name: smoke
+    needs: bench
+    if: needs.bench.outputs.changed == 'true' && needs.bench.outputs.has-baseline == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build engines
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/engines" "${RUNNER_TEMP}/out"
+          go build -o "${RUNNER_TEMP}/engines/dev" .
+          git worktree add --detach "${RUNNER_TEMP}/base" "${BASE_SHA}"
+          (cd "${RUNNER_TEMP}/base" && go build -o "${RUNNER_TEMP}/engines/base" .)
+
+      - name: Resolve harness image
+        id: harness
+        run: |
+          set -euo pipefail
+          tag="$(cat testing/Dockerfile testing/entrypoint.sh testing/config.env \
+            | sha256sum | cut -c1-12)"
+          image="ghcr.io/${{ github.repository_owner }}/ariadne-harness:${tag}"
+
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+          # The published image may not exist yet - on the PR that introduces or
+          # changes the harness, build it locally instead of failing.
+          if docker pull --quiet "${image}"; then
+            echo "pulled ${image}"
+          else
+            echo "::notice::${image} not published yet - building locally"
+            docker build -q -t "${image}" testing
+          fi
+          echo "image=${image}" >> "${GITHUB_OUTPUT}"
+
+      - name: Smoke test
+        run: |
+          docker run --rm \
+            -v "${RUNNER_TEMP}/engines:/engines:ro" \
+            -v "${RUNNER_TEMP}/out:/out" \
+            -e CONCURRENCY=2 \
+            -e LABEL=smoke \
+            "${{ steps.harness.outputs.image }}" smoke
+
+      - name: Upload games
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-pgn
+          path: |
+            ${{ runner.temp }}/out/*.pgn
+            ${{ runner.temp }}/out/*.clean.log
+          if-no-files-found: warn
+
+  # Must run after bench: bench ticks the checkbox for non-functional changes,
+  # and a gate that reads the body first would fail on a PR that needs no SPRT.
+  # It cannot be fixed by re-running, because bench's edit is made with
+  # GITHUB_TOKEN and therefore fires no `edited` event.
+  gate:
+    name: sprt verified
+    needs: bench
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require SPRT checkbox
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          gh pr view "${PR}" --json body --jq .body > "${RUNNER_TEMP}/body.md"
+
+          python3 - "${RUNNER_TEMP}/body.md" <<'PY'
+          import re
+          import sys
+
+          LINE = re.compile(r"^\s*[-*]\s*\[([ xX])\]\s*SPRT verified\b")
+
+          with open(sys.argv[1], encoding="utf-8") as fh:
+              lines = fh.read().splitlines()
+
+          for line in lines:
+              m = LINE.match(line)
+              if not m:
+                  continue
+              if m.group(1) in ("x", "X"):
+                  print(f"SPRT verified: {line.strip()}")
+                  sys.exit(0)
+              print("::error::SPRT has not been verified for this change.")
+              print(
+                  "The bench node count differs from the target branch, so the "
+                  "search behaves differently. Run SPRT, paste the result into "
+                  "the PR description, then tick the box."
+              )
+              sys.exit(1)
+
+          print("::error::No 'SPRT verified' checkbox found in the PR description.")
+          print("Restore it from .github/pull_request_template.md.")
+          sys.exit(1)
+          PY
