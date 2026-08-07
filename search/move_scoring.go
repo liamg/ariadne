@@ -5,7 +5,6 @@ import "github.com/liamg/ariadne/board"
 type orderScore int32 // deliberately different type to eval.Score
 
 const (
-	scoreQuiet           orderScore = 0         // TODO: history score +- 32768
 	scoreQueenPromoBonus orderScore = 2_000_000 // add mvv/lva to this
 	scoreCaptureBonus    orderScore = 1_000_000 // add mvv/lva to this
 	scoreKiller1         orderScore = 900_000
@@ -14,12 +13,24 @@ const (
 	scoreUnderpromotion  orderScore = -500_000
 	scoreLosingCapture   orderScore = -1_000_000 // plus mvv/lva
 	scoreKnightPromotion orderScore = 50_000     // sometimes uniquely useful - above quiet but below captures
+	scoreHistoryMax                 = 16384
+	scoreHistoryBonusCap            = 2000
 )
 
-func scoreMove(pos *board.Position, move board.Move) orderScore {
+func (mp *movePicker) scoreMove(move board.Move) orderScore {
+	pos := mp.pos
 	switch move.Kind() {
 	case board.QuietMove, board.DoublePawnPush, board.KingsideCastle, board.QueensideCastle:
-		return scoreQuiet // TODO: history later
+
+		if move == mp.killers[0] {
+			return scoreKiller1
+		}
+
+		if move == mp.killers[1] {
+			return scoreKiller2
+		}
+
+		return orderScore(mp.history[pos.PieceAt(move.From())][move.To()])
 	case board.KnightPromotion:
 		return scoreKnightPromotion
 	case board.KnightPromotionCapture:

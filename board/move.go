@@ -34,6 +34,10 @@ func NewMove(from Square, to Square, kind MoveKind) Move {
 			uint16(kind))
 }
 
+func (m Move) IsQuietish() bool {
+	return m.Kind() <= QueensideCastle
+}
+
 func (m Move) From() Square {
 	return Square((m >> 10) & 0x3F)
 }

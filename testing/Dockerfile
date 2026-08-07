@@ -35,7 +35,7 @@ RUN git clone --depth 1 --branch "${FASTCHESS_VERSION}" \
 # the image small.
 #
 # Replace this stage with a COPY of the generated CC0 book when it exists.
-# Swapping the book is a frozen-config change - record it in testing/results.md.
+# Swapping the book is a frozen-config change.
 
 FROM ubuntu:24.04 AS book
 

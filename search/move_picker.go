@@ -13,6 +13,8 @@ type movePicker struct {
 	scores    []orderScore
 	pos       *board.Position
 	index     int
+	killers   [2]board.Move
+	history   *[16][64]int32
 }
 
 type moveGenType uint8
@@ -23,12 +25,14 @@ const (
 	moveGenTypeEvasions
 )
 
-func newMovePicker(genType moveGenType, moves []board.Move, scores []orderScore, pos *board.Position) movePicker {
+func newMovePicker(genType moveGenType, moves []board.Move, scores []orderScore, pos *board.Position, killers [2]board.Move, history *[16][64]int32) movePicker {
 	return movePicker{
 		moves:   moves,
 		genType: genType,
 		pos:     pos,
 		scores:  scores,
+		killers: killers,
+		history: history,
 	}
 }
 
@@ -72,7 +76,7 @@ func (mp *movePicker) next() (board.Move, bool) {
 
 		mp.scores = mp.scores[:len(mp.moves)]
 		for i, move := range mp.moves[mp.index:] {
-			s := scoreMove(mp.pos, move)
+			s := mp.scoreMove(move)
 			mp.scores[i+mp.index] = s
 		}
 	}
