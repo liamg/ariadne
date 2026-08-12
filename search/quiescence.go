@@ -5,6 +5,11 @@ import (
 	"github.com/liamg/ariadne/eval"
 )
 
+var (
+	noKillers = [2]board.Move{board.NullMove, board.NullMove}
+	noHistory = &[16][64]int32{}
+)
+
 func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Score) eval.Score {
 	s.state.NodeCount++
 
@@ -39,7 +44,7 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 		genType = moveGenTypeAllMoves // should be evasions specifically
 	}
 
-	picker := newMovePicker(genType, s.plyBuffers[ply][:0], s.scoreBuffers[ply][:0], pos)
+	picker := newMovePicker(genType, s.plyBuffers[ply][:0], s.scoreBuffers[ply][:0], pos, noKillers, noHistory)
 
 	bestScore := quietScore
 

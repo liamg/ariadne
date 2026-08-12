@@ -229,7 +229,7 @@ being able to answer "did that change help?" honestly.
 - [x] Run under a GUI (Cute Chess, Arena, Banksia)
 - [x] Get an opening book / EPD position set so games aren't all identical
 - [x] Automated engine-vs-engine matches with `fastchess`
-- [ ] **Set up SPRT and use it for every single change from here on**
+- [x] **Set up SPRT and use it for every single change from here on**
 
 ### The maths you need here, properly
 
@@ -313,8 +313,7 @@ games per change, forever. Budget for it.
 
 Each of these is one idea, added and SPRT-tested individually. **Never two at once.**
 
-- [ ] King safety: attackers in the king zone, pawn shield
-- [ ] Killer moves and history heuristic
+- [x] Killer moves and history heuristic
 - [ ] Aspiration windows
 - [ ] Principal variation search (null-window re-search)
 - [ ] Null move pruning
@@ -323,6 +322,7 @@ Each of these is one idea, added and SPRT-tested individually. **Never two at on
 - [ ] Static exchange evaluation (SEE) for capture ordering and pruning
 - [ ] Check extensions
 - [ ] Multithreading (Lazy SMP)
+- [ ] King safety: attackers in the king zone, pawn shield
 
 **The theme:** almost all of these are bets. "This move is probably bad, so search it
 shallowly (or not at all)." They're unsound in theory — you *will* miss things — but they

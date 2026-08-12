@@ -61,7 +61,14 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 		ttMove = entry.Move
 	}
 
-	picker := newMovePicker(moveGenTypeAllMoves, s.plyBuffers[ply][:0], s.scoreBuffers[ply][:0], pos)
+	picker := newMovePicker(
+		moveGenTypeAllMoves,
+		s.plyBuffers[ply][:0],
+		s.scoreBuffers[ply][:0],
+		pos,
+		s.state.killers[ply],
+		&s.history,
+	)
 	if ttMove != board.NullMove {
 		picker.setTTMove(ttMove)
 	}
@@ -69,6 +76,9 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 	bestScore := -eval.Infinity
 	var bestMove board.Move
 	alphaOrig := alpha
+
+	// reset scratch buffers for this ply
+	s.scratchBuffers[ply] = s.scratchBuffers[ply][:0]
 
 	var legalMoves int
 	for {
@@ -96,12 +106,31 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 				}
 				if bestScore >= beta {
 					pos.UnmakeMove(undo)
+					// store killer moves for quiet moves, double pawn pushes, and castling
+					if move.IsQuietish() {
+						if move != s.state.killers[ply][0] {
+							s.state.killers[ply][1] = s.state.killers[ply][0]
+							s.state.killers[ply][0] = move
+						}
+						bonus := min(int32(depth*depth), scoreHistoryBonusCap)
+						piece := pos.PieceAt(move.From())
+						cur := s.history[piece][move.To()]
+						s.history[piece][move.To()] = cur + bonus - (cur*bonus)/scoreHistoryMax
+						for _, m := range s.scratchBuffers[ply] {
+							piece := pos.PieceAt(m.From())
+							cur = s.history[piece][m.To()]
+							s.history[piece][m.To()] = cur - bonus - (cur*bonus)/scoreHistoryMax
+						}
+					}
 					s.tt.store(pos.ZobristHash(), int16(bestScore), bestMove, depth, lowerBound, s.age, ply)
 					return bestScore
 				}
 				if bestScore > alpha {
 					alpha = bestScore
 				}
+			}
+			if move.IsQuietish() {
+				s.scratchBuffers[ply] = append(s.scratchBuffers[ply], move)
 			}
 		}
 		pos.UnmakeMove(undo)

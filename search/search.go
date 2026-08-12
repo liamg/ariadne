@@ -13,10 +13,12 @@ type Searcher struct {
 	state            *State
 	plyBuffers       [][]board.Move
 	scoreBuffers     [][]orderScore
+	scratchBuffers   [][]board.Move // tried quiet moves
 	ttSizeMB         int
 	tt               *transpositionTable
 	age              uint8
 	progressCallback func(Progress)
+	history          [16][64]int32
 }
 
 const MaxPly = 128
@@ -40,16 +42,19 @@ func WithProgressCallback(callback func(Progress)) Option {
 func New(options ...Option) *Searcher {
 	plyBuffers := make([][]board.Move, MaxPly)
 	scoreBuffers := make([][]orderScore, MaxPly)
+	scratchBuffers := make([][]board.Move, MaxPly)
 	for i := range len(plyBuffers) {
 		plyBuffers[i] = make([]board.Move, 0, MaxMoves)
 		scoreBuffers[i] = make([]orderScore, 0, MaxMoves)
+		scratchBuffers[i] = make([]board.Move, 0, MaxMoves)
 	}
 
 	s := &Searcher{
-		state:        &State{},
-		plyBuffers:   plyBuffers,
-		scoreBuffers: scoreBuffers,
-		ttSizeMB:     64, // default to 64MB
+		state:          &State{},
+		plyBuffers:     plyBuffers,
+		scoreBuffers:   scoreBuffers,
+		scratchBuffers: scratchBuffers,
+		ttSizeMB:       64, // default to 64MB
 	}
 
 	for _, opt := range options {
@@ -87,9 +92,11 @@ type State struct {
 	Stop      atomic.Bool
 	BestMove  board.Move
 	maxPly    int
+	killers   [MaxPly][2]board.Move
 }
 
 func (s *Searcher) Reset() {
+	s.history = [16][64]int32{}
 	s.tt.reset()
 }
 
