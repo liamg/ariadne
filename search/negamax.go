@@ -6,7 +6,7 @@ import (
 )
 
 // negamax returns a score from the perspective of the moving player - so a higher score means a better outcome for that player
-func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta eval.Score) eval.Score {
+func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta eval.Score, canNull bool) eval.Score {
 	if ply > 0 && pos.HalfMoveClock() >= 100 {
 		s.state.NodeCount++
 		return eval.Draw
@@ -61,6 +61,21 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 		ttMove = entry.Move
 	}
 
+	// null move pruning
+	if canNull && ply > 0 && depth >= 3 && beta <= eval.Mate-eval.Score(MaxPly) && !pos.InCheck(pos.SideToMove()) && pos.HasNonPawnMaterial(pos.SideToMove()) {
+		// only null move if we have non-pawn material, otherwise it can lead to zugzwang
+		undo := pos.MakeMove(board.NullMove)
+		score := -s.negamax(pos, depth-3, ply+1, -beta, -beta+1, false)
+		pos.UnmakeMove(undo)
+		if score >= beta {
+			// don't return mate scores as they're not "real" mate
+			if score >= eval.Mate-MaxPly {
+				return beta
+			}
+			return score
+		}
+	}
+
 	picker := newMovePicker(
 		moveGenTypeAllMoves,
 		s.plyBuffers[ply][:0],
@@ -90,7 +105,7 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 		if !pos.IsLastMoveIllegal() {
 			legalMoves++
 			// NOTE: consider not decrementing depth when the enemy is in check here, as it's a promising branch...
-			score := -s.negamax(pos, depth-1, ply+1, -beta, -alpha)
+			score := -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
 			if depth > 1 && s.state.Stop.Load() {
 				pos.UnmakeMove(undo)
 				if ply == 0 { // if this is the root, just take the best we have

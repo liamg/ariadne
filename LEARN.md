@@ -314,15 +314,15 @@ games per change, forever. Budget for it.
 Each of these is one idea, added and SPRT-tested individually. **Never two at once.**
 
 - [x] Killer moves and history heuristic
-- [ ] Aspiration windows
+- [x] Null move pruning
 - [ ] Principal variation search (null-window re-search)
-- [ ] Null move pruning
 - [ ] Late move reductions
-- [ ] Futility pruning, reverse futility
 - [ ] Static exchange evaluation (SEE) for capture ordering and pruning
+- [ ] Futility pruning, reverse futility
 - [ ] Check extensions
-- [ ] Multithreading (Lazy SMP)
+- [ ] Aspiration windows
 - [ ] King safety: attackers in the king zone, pawn shield
+- [ ] Multithreading (Lazy SMP)
 
 **The theme:** almost all of these are bets. "This move is probably bad, so search it
 shallowly (or not at all)." They're unsound in theory — you *will* miss things — but they

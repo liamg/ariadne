@@ -28,13 +28,27 @@ func (p *Position) MakeMove(move Move) Undo {
 		move:          move,
 	}
 
+	p.state.enPassantSquare = NoSquare
+
+	if move == NullMove {
+		if p.sideToMove == Black {
+			p.fullMoveNumber++
+			p.sideToMove = White
+		} else {
+			p.sideToMove = Black
+		}
+		// always XOR this, as colour always flips
+		p.state.zobristHash ^= zobristBlackToMove
+		p.state.zobristHash ^= zobristEnPassant[p.state.enPassantSquare] ^ zobristEnPassant[undo.previousState.enPassantSquare]
+		return undo
+	}
+
 	to := move.To()
 	from := move.From()
 
 	p.state.castlingRights &^= castlingRightsMask[from] | castlingRightsMask[to]
 
 	// always reset ep square
-	p.state.enPassantSquare = NoSquare
 	piece := p.mailbox[from]
 
 	p.state.zobristHash ^= zobristTable[from][piece]
@@ -157,6 +171,12 @@ func (p *Position) UnmakeMove(undo Undo) {
 	movedSide := p.sideToMove.Opposite()
 	if movedSide == Black {
 		p.fullMoveNumber--
+	}
+
+	if undo.move == NullMove {
+		p.state = undo.previousState
+		p.sideToMove = movedSide
+		return
 	}
 
 	to := undo.move.To()

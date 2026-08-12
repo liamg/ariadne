@@ -156,7 +156,7 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 		}
 
 		// calculate best score
-		score = s.negamax(pos, depth, 0, -eval.Infinity, eval.Infinity)
+		score = s.negamax(pos, depth, 0, -eval.Infinity, eval.Infinity, true)
 		if s.state.Stop.Load() {
 			if score != -eval.Infinity {
 				result.Score = score
