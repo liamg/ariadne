@@ -593,3 +593,8 @@ func (p *Position) AttacksWithCustomOccupancy(pieceType PieceType, sq Square, oc
 		panic("invalid piece type")
 	}
 }
+
+func (p *Position) HasNonPawnMaterial(c Colour) bool {
+	nonPawnMaterial := p.byColour[c] &^ p.byType[Pawn] &^ p.byType[King]
+	return nonPawnMaterial != 0
+}
