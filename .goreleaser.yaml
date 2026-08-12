@@ -52,6 +52,16 @@ snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 changelog:
+  # The default source is `git`, whose entry template is "<full SHA>: <subject>"
+  # - forty characters of noise before every line. `github` builds entries from
+  # the API instead, so each line carries its PR number and author.
+  #
+  # Not `github-native`: that hands the whole changelog to GitHub's generator,
+  # which ignores sort, groups and the filters below.
+  use: github
+  # Negative means "no commit hash at all". The subjects are conventional
+  # commits and already say what changed.
+  abbrev: -1
   sort: asc
   filters:
     exclude:
