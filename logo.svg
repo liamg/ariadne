@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="88 92 440 416" width="440" height="416">
+  <g>
+    <rect x="120" y="100" width="400" height="400" fill="#1B1814"/>
+    <g fill="#2B261F">
+      <rect x="120" y="100" width="100" height="100"/>
+      <rect x="320" y="100" width="100" height="100"/>
+      <rect x="220" y="200" width="100" height="100"/>
+      <rect x="420" y="200" width="100" height="100"/>
+      <rect x="120" y="300" width="100" height="100"/>
+      <rect x="320" y="300" width="100" height="100"/>
+      <rect x="220" y="400" width="100" height="100"/>
+      <rect x="420" y="400" width="100" height="100"/>
+    </g>
+    <rect x="120" y="100" width="400" height="400" fill="none" stroke="#EFE9DC" stroke-opacity="0.35" stroke-width="1.5"/>
+  </g>
+
+  <!-- Thread: staircase ascending from bottom-left to top-right -->
+  <path d="M 96 450
+           L 220 450
+           A 50 50 0 0 0 270 400
+           L 270 300
+           A 50 50 0 0 1 320 250
+           L 370 250
+           A 50 50 0 0 0 420 200
+           A 50 50 0 0 1 470 150
+           C 495 150 510 143 513 131
+           C 516 120 507 113 497 117
+           C 489 120 489 131 497 133"
+        fill="none" stroke="#A0473C" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

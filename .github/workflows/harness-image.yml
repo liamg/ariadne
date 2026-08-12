@@ -1,0 +1,72 @@
+name: harness-image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - testing/Dockerfile
+      - testing/entrypoint.sh
+      - testing/config.env
+      - .github/workflows/harness-image.yml
+  pull_request:
+    paths:
+      - testing/Dockerfile
+      - testing/entrypoint.sh
+      - testing/config.env
+      - .github/workflows/harness-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    name: build harness image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Compute tag
+        id: tag
+        run: |
+          set -euo pipefail
+          # Must match the Makefile's HARNESS_TAG exactly, or local and CI runs
+          # would silently use different harnesses.
+          tag="$(cat testing/Dockerfile testing/entrypoint.sh testing/config.env \
+            | sha256sum | cut -c1-12)"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "harness tag: ${tag}"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # On a PR this builds but does not push - the image is verified without
+      # publishing an untrusted build. Pushing happens on main only.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: testing
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ github.repository_owner }}/ariadne-harness:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          {
+            echo "Harness tag: \`${{ steps.tag.outputs.tag }}\`"
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              echo
+              echo "Built but not pushed (pull request)."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"

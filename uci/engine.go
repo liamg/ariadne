@@ -42,8 +42,8 @@ func (e *engine) reportProgress(r responder) func(progress search.Progress) {
 			plies := int(eval.Mate) - int(progress.Score)
 			scoreStr = fmt.Sprintf("mate %d", (plies+1)/2)
 		} else if int(progress.Score) < -(int(eval.Mate) - search.MaxPly) {
-			plies := int(eval.Mate) + int(progress.Score)
-			scoreStr = fmt.Sprintf("mate %d", (plies+1)/2)
+			plies := (int(eval.Mate) + int(progress.Score))
+			scoreStr = fmt.Sprintf("mate -%d", (plies+1)/2)
 		} else {
 			scoreStr = fmt.Sprintf("cp %d", progress.Score)
 		}
