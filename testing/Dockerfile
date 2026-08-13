@@ -21,9 +21,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
     && rm -rf /var/lib/apt/lists/*
 
+# NATIVE= overrides fastchess's default -march=native. Without it the binary is
+# tuned to whichever machine built the image, and GitHub's runner fleet is
+# heterogeneous - a build on an AVX-512 Intel runner dies with SIGILL (exit 132)
+# the moment it runs on an AMD one. The failure is a CPU lottery, so it looks
+# like flakiness rather than a build bug.
+#
+# Costs nothing: fastchess is a referee shuttling UCI text between two
+# processes, not a hot vector loop. Note that fastchess's own `build=release`
+# is NOT the fix - it hardcodes -march=x86-64 and -static, breaking arm64.
 RUN git clone --depth 1 --branch "${FASTCHESS_VERSION}" \
         https://github.com/Disservin/fastchess.git /src \
-    && make -C /src -j"$(nproc)" \
+    && make -C /src NATIVE= -j"$(nproc)" \
     && /src/fastchess --version
 
 # ---- opening book -----------------------------------------------------------
