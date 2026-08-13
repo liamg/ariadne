@@ -49,6 +49,8 @@ const (
 	backwardPawnEG     = -15
 	unopposedPawnMG    = -8
 	unopposedPawnEG    = -10
+	kingDangerDivisor  = 32
+	kingDangerMax      = 500
 )
 
 var passedWhitePawnsMG = []int{
@@ -59,17 +61,37 @@ var passedWhitePawnsEG = []int{
 	0, 0, 20, 30, 50, 90, 150, 0,
 }
 
+var kingAttackWeights = [7]int16{
+	board.NoPieceType: 0,
+	board.Pawn:        0,
+	board.Knight:      2,
+	board.Bishop:      2,
+	board.Rook:        3,
+	board.Queen:       5,
+	board.King:        0,
+}
+
 var (
 	passedBlackPawnsMG []int
 	passedBlackPawnsEG []int
 )
 
+var kingZones [64]board.Bitboard
+
 func init() {
 	passedBlackPawnsMG = make([]int, 8)
 	passedBlackPawnsEG = make([]int, 8)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		passedBlackPawnsMG[i] = passedWhitePawnsMG[7-i]
 		passedBlackPawnsEG[i] = passedWhitePawnsEG[7-i]
+	}
+
+	for sq := board.A1; sq <= board.H8; sq++ {
+		file := min(max(sq.File(), board.FileB), board.FileG)
+		rank := min(max(sq.Rank(), board.Rank2), board.Rank7)
+		centreSq, _ := board.SquareFromFileAndRank(file, rank)
+		centre := centreSq.Bitboard()
+		kingZones[sq] = centre | centre.NorthWest() | centre.North() | centre.NorthEast() | centre.West() | centre.East() | centre.SouthWest() | centre.South() | centre.SouthEast()
 	}
 }
 
@@ -194,6 +216,15 @@ func Evaluate(p *board.Position) Score {
 	whitePieces := p.PiecesByColour(board.White)
 	blackPieces := p.PiecesByColour(board.Black)
 
+	whiteKing := p.KingSquare(board.White)
+	blackKing := p.KingSquare(board.Black)
+	// white pieces attacking the black king
+	whiteKingAttackers := int16(0)
+	whiteKingAttackWeight := int16(0)
+	// black pieces attacking the white king
+	blackKingAttackers := int16(0)
+	blackKingAttackWeight := int16(0)
+
 	for pt := board.Pawn; pt <= board.King; pt++ {
 
 		var mobility int16
@@ -229,7 +260,12 @@ func Evaluate(p *board.Position) Score {
 					}
 				}
 
-				mobility = int16((p.AttacksWithCustomOccupancy(pt, sq, occ) &^ whitePieces).Count())
+				att := p.AttacksWithCustomOccupancy(pt, sq, occ) &^ whitePieces
+				if hits := int16((att & kingZones[blackKing]).Count()); hits > 0 {
+					whiteKingAttackers++
+					whiteKingAttackWeight += (kingAttackWeights[pt]) * hits
+				}
+				mobility = int16(att.Count())
 			}
 			scoreMidGame += Score((mobility * pieceMobilityWeightsMidGame[pt]) + pieceSquareTablesMidGame[board.White][pt][sq])
 			scoreEndGame += Score((mobility * pieceMobilityWeightsEndGame[pt]) + pieceSquareTablesEndGame[board.White][pt][sq])
@@ -249,13 +285,26 @@ func Evaluate(p *board.Position) Score {
 						}
 					}
 				}
-				mobility = int16((p.AttacksWithCustomOccupancy(pt, sq, occ) &^ blackPieces).Count())
+				att := p.AttacksWithCustomOccupancy(pt, sq, occ) &^ blackPieces
+				if hits := int16((att & kingZones[whiteKing]).Count()); hits > 0 {
+					blackKingAttackers++
+					blackKingAttackWeight += (kingAttackWeights[pt]) * hits
+				}
+				mobility = int16(att.Count())
 			}
 			scoreMidGame -= Score((mobility * pieceMobilityWeightsMidGame[pt]) + pieceSquareTablesMidGame[board.Black][pt][sq])
 			scoreEndGame -= Score((mobility * pieceMobilityWeightsEndGame[pt]) + pieceSquareTablesEndGame[board.Black][pt][sq])
 		}
 	}
 
+	if whiteKingAttackers >= 2 {
+		danger := Score(whiteKingAttackWeight) * Score(whiteKingAttackers)
+		scoreMidGame += min((danger*danger)/kingDangerDivisor, kingDangerMax)
+	}
+	if blackKingAttackers >= 2 {
+		danger := Score(blackKingAttackWeight) * Score(blackKingAttackers)
+		scoreMidGame -= min((danger*danger)/kingDangerDivisor, kingDangerMax)
+	}
 	phase = min(maxPhase, phase)
 	score := (scoreMidGame*(Score(phase)) + scoreEndGame*(Score(maxPhase-phase))) / maxPhase
 

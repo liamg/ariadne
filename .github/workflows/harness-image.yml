@@ -58,6 +58,10 @@ jobs:
           context: testing
           push: ${{ github.event_name != 'pull_request' }}
           tags: ghcr.io/${{ github.repository_owner }}/ariadne-harness:${{ steps.tag.outputs.tag }}
+          # Without this the image stamps itself "unknown" and every result CI
+          # produces loses the provenance the stamp exists to carry.
+          build-args: |
+            HARNESS_TAG=${{ steps.tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

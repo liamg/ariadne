@@ -252,7 +252,7 @@ jobs:
             echo "pulled ${image}"
           else
             echo "::notice::${image} not published yet - building locally"
-            docker build -q -t "${image}" testing
+            docker build -q --build-arg "HARNESS_TAG=${tag}" -t "${image}" testing
           fi
           echo "image=${image}" >> "${GITHUB_OUTPUT}"
 

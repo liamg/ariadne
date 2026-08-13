@@ -171,3 +171,67 @@ func TestPhaseIsClampedToMaxPhase(t *testing.T) {
 		t.Errorf("endgame table affected the score at phase above maxPhase: %v became %v", before, after)
 	}
 }
+
+func TestKingZones(t *testing.T) {
+	for sq := board.A1; sq <= board.H8; sq++ {
+		kingZone := kingZones[sq]
+		if kingZone.Count() != 9 {
+			t.Errorf("king zone for %v has %d squares, want 9", sq, kingZone.Count())
+		}
+		if !kingZone.Has(sq) {
+			t.Errorf("king zone for %v does not contain the square itself", sq)
+		}
+
+		flippedKingZone := kingZones[sq^56]
+		var mirror board.Bitboard
+		var csq board.Square
+		for flippedKingZone != 0 {
+			csq, flippedKingZone = flippedKingZone.PopSquare()
+			mirror |= (csq ^ 56).Bitboard()
+		}
+		if mirror != kingZones[sq] {
+			t.Errorf("king zone for %v does not mirror king zone for %v", sq, sq^56)
+		}
+		flippedKingZone = kingZones[sq^7]
+		mirror = 0
+		for flippedKingZone != 0 {
+			csq, flippedKingZone = flippedKingZone.PopSquare()
+			mirror |= (csq ^ 7).Bitboard()
+		}
+		if mirror != kingZones[sq] {
+			t.Errorf("king zone for %v does not mirror king zone for %v", sq, sq^7)
+		}
+
+	}
+	if kingZones[board.G1] != kingZones[board.H1] {
+		t.Errorf("g1 and h1 should provide the same king zones")
+	}
+	if kingZones[board.A1] != kingZones[board.B1] {
+		t.Errorf("a1 and b1 should provide the same king zones")
+	}
+}
+
+func TestKingSafetyFavoursTheAttackingSide(t *testing.T) {
+	tests := []struct {
+		fen      string
+		favoured board.Colour
+	}{
+		{"4nrk1/ppp3b1/6q1/6NQ/8/3B4/PPP5/1K3R2 w - - 0 1", board.White},
+		{"1k3r2/ppp5/3b4/8/6nq/6Q1/PPP3B1/4NRK1 w - - 0 1", board.Black},
+	}
+
+	for _, test := range tests {
+		pos, err := board.ParseFEN(test.fen)
+		if err != nil {
+			t.Fatalf("failed to parse FEN %q: %v", test.fen, err)
+		}
+
+		score := Evaluate(pos)
+		if test.favoured == board.White && score <= 0 {
+			t.Errorf("%s: white has the attack but scores %v", test.fen, score)
+		}
+		if test.favoured == board.Black && score >= 0 {
+			t.Errorf("%s: black has the attack but scores %v", test.fen, score)
+		}
+	}
+}

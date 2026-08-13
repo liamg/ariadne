@@ -598,3 +598,7 @@ func (p *Position) HasNonPawnMaterial(c Colour) bool {
 	nonPawnMaterial := p.byColour[c] &^ p.byType[Pawn] &^ p.byType[King]
 	return nonPawnMaterial != 0
 }
+
+func (p *Position) KingSquare(c Colour) Square {
+	return p.kingSquare[c]
+}
