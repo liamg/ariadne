@@ -235,3 +235,64 @@ func TestKingSafetyFavoursTheAttackingSide(t *testing.T) {
 		}
 	}
 }
+
+func TestKingShelterPenalty(t *testing.T) {
+	tests := []struct {
+		king    board.Square
+		pawns   []board.Square
+		penalty int16
+	}{
+		{
+			king:    board.G1,
+			pawns:   []board.Square{board.F2, board.G2, board.H2},
+			penalty: 0,
+		},
+		{
+			king:    board.G1,
+			pawns:   []board.Square{board.F2, board.H2},
+			penalty: 30,
+		},
+		{
+			king:    board.G1,
+			pawns:   []board.Square{board.F2, board.G3, board.H2},
+			penalty: 10,
+		},
+		{
+			king:    board.G1,
+			pawns:   []board.Square{board.F2, board.G4, board.H2},
+			penalty: 20,
+		},
+		{
+			king:    board.G1,
+			pawns:   nil,
+			penalty: 90,
+		},
+		{
+			king:    board.H1,
+			pawns:   []board.Square{board.F2, board.G2, board.H2},
+			penalty: 0,
+		},
+		{
+			king:    board.G2,
+			pawns:   []board.Square{board.F2, board.G3, board.H2},
+			penalty: 10,
+		},
+		{
+			king:    board.G4,
+			pawns:   []board.Square{board.F5, board.G5, board.H5},
+			penalty: 90,
+		},
+		{
+			king:    board.G6,
+			pawns:   []board.Square{board.F7, board.G7, board.H7},
+			penalty: 90,
+		},
+	}
+
+	for _, test := range tests {
+		calculatedPenalty := calculateKingShelterPenalty(test.king, board.BitboardFromSquares(test.pawns...))
+		if calculatedPenalty != test.penalty {
+			t.Errorf("king %v with pawns %v: expected penalty %d, got %d", test.king, test.pawns, test.penalty, calculatedPenalty)
+		}
+	}
+}

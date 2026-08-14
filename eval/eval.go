@@ -218,6 +218,10 @@ func Evaluate(p *board.Position) Score {
 
 	whiteKing := p.KingSquare(board.White)
 	blackKing := p.KingSquare(board.Black)
+
+	scoreMidGame -= Score(calculateKingShelterPenalty(whiteKing, whitePawns))
+	scoreMidGame += Score(calculateKingShelterPenalty(blackKing.FlipVertical(), blackPawns.FlipVertical()))
+
 	// white pieces attacking the black king
 	whiteKingAttackers := int16(0)
 	whiteKingAttackWeight := int16(0)
@@ -312,4 +316,41 @@ func Evaluate(p *board.Position) Score {
 		score = -score
 	}
 	return score
+}
+
+// for each square, a bitboard of the squares ahead of it (north)
+var ranksFrom [8]board.Bitboard
+
+func init() {
+	for rank := board.Rank1; rank <= board.Rank8; rank++ {
+		ranksFrom[rank] = ^board.Bitboard(0) << (rank * 8)
+	}
+}
+
+// done from the point of view of white - we flip on the way in
+func calculateKingShelterPenalty(king board.Square, friendlyPawns board.Bitboard) int16 {
+	clampedFile := min(max(king.File(), board.FileB), board.FileG)
+	rank := king.Rank()
+	penalty := int16(0)
+	for file := clampedFile - 1; file <= clampedFile+1; file++ {
+		shelterPawns := friendlyPawns & ranksFrom[rank] & file.Mask()
+		// no pawns on this file on or ahead of the kings rank
+		if shelterPawns == 0 {
+			penalty += 30
+			continue
+		}
+		nearestPawn, _ := shelterPawns.PopSquare()
+		switch nearestPawn.Rank() {
+		case board.Rank2:
+			// nothing to do, no penalty if king is protected nicely
+		case board.Rank3:
+			penalty += 10
+		case board.Rank4:
+			penalty += 20
+		default:
+			penalty += 30
+		}
+	}
+
+	return penalty
 }

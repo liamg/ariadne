@@ -105,6 +105,10 @@ func (s Square) Bitboard() Bitboard {
 	return 1 << s
 }
 
+func (s Square) FlipVertical() Square {
+	return Square((s ^ 56) & 63)
+}
+
 var ErrInvalidSquare = fmt.Errorf("invalid square")
 
 func ParseSquare(s string) (Square, error) {

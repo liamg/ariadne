@@ -122,3 +122,7 @@ func (b Bitboard) SouthEast() Bitboard {
 func (b Bitboard) SouthWest() Bitboard {
 	return (b &^ FileAMask) >> 9
 }
+
+func (b Bitboard) FlipVertical() Bitboard {
+	return Bitboard(bits.ReverseBytes64(uint64(b)))
+}
