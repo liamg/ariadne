@@ -95,7 +95,8 @@ func TestQuiescence(t *testing.T) {
 				t.Fatalf("failed to parse FEN: %v", err)
 			}
 
-			static := eval.Evaluate(pos)
+			e := eval.New()
+			static := e.Evaluate(pos)
 
 			searcher := New()
 			score := searcher.quiescence(pos, tt.ply, -eval.Infinity, eval.Infinity)
@@ -143,7 +144,8 @@ func TestQuiescenceStandPatFloor(t *testing.T) {
 			continue // stand-pat does not apply when in check
 		}
 
-		static := eval.Evaluate(pos)
+		e := eval.New()
+		static := e.Evaluate(pos)
 		searcher := New()
 		score := searcher.quiescence(pos, 0, -eval.Infinity, eval.Infinity)
 

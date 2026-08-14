@@ -14,7 +14,7 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 	s.state.NodeCount++
 
 	if ply >= MaxPly {
-		return eval.Evaluate(pos)
+		return s.evaluator.Evaluate(pos)
 	}
 
 	if ply > s.state.maxPly {
@@ -27,7 +27,7 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 	if inCheck {
 		quietScore = -eval.Infinity
 	} else {
-		quietScore = eval.Evaluate(pos)
+		quietScore = s.evaluator.Evaluate(pos)
 	}
 
 	if quietScore >= beta {

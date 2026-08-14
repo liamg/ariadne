@@ -20,9 +20,17 @@ SPRT_WT  := $(CURDIR)/testing/.base-worktree
 # moved on to - otherwise main shifting mid-run corrupts the comparison.
 BASE ?= $(shell git merge-base HEAD main)
 
-# Deliberately 1. Saturating the box produces time losses, and a single flagged
-# game invalidates the run. Raise it only on a machine with cores to spare.
-CONCURRENCY ?= 1
+# One less than the CPU count, leaving something for the rest of the box. Each
+# game holds two engine processes, but only one searches at a time - the other
+# is blocked on stdin - so this is N busy threads, not 2N.
+#
+# Counts LOGICAL CPUs, so on an SMT box two searches share a physical core.
+# That costs nps and adds timing jitter; it hits both engines equally, so it
+# does not bias the result, but time losses INVALIDATE a run and lowering this
+# is the fix. Also part of the run identity: change it and a saved run will
+# start fresh rather than resume.
+CONCURRENCY ?= $(shell n=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2); \
+	if [ "$$n" -gt 1 ]; then echo $$((n - 1)); else echo 1; fi)
 
 # How many games a kill can cost. fastchess does not checkpoint on SIGTERM,
 # so this is the real worst case for an interrupted run.

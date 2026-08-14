@@ -315,13 +315,16 @@ Each of these is one idea, added and SPRT-tested individually. **Never two at on
 
 - [x] Killer moves and history heuristic
 - [x] Null move pruning
+- [x] King safety: zones
+- [x] King safety: shelter
+- [x] King safety: storm
+- [ ] King safety: safe checks
 - [ ] Principal variation search (null-window re-search)
 - [ ] Late move reductions
 - [ ] Static exchange evaluation (SEE) for capture ordering and pruning
 - [ ] Futility pruning, reverse futility
 - [ ] Check extensions
 - [ ] Aspiration windows
-- [ ] King safety: attackers in the king zone, pawn shield
 - [ ] Multithreading (Lazy SMP)
 
 **The theme:** almost all of these are bets. "This move is probably bad, so search it
