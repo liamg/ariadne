@@ -89,7 +89,9 @@ func TestEvaluateIsColourSymmetric(t *testing.T) {
 			t.Fatalf("failed to parse mirrored FEN %q (from %q): %v", mirroredFEN, fen, err)
 		}
 
-		if got, want := Evaluate(mirrored), Evaluate(pos); got != want {
+		e := New()
+
+		if got, want := e.Evaluate(mirrored), e.Evaluate(pos); got != want {
 			t.Errorf("%s scores %v, mirror %s scores %v", fen, want, mirroredFEN, got)
 		}
 	}
@@ -141,7 +143,7 @@ func TestPieceSquareTablesMirrorByColour(t *testing.T) {
 // startpos is symmetric, so it must score 0
 func TestStartingPositionIsBalanced(t *testing.T) {
 	pos := board.StartingPosition()
-	if score := Evaluate(pos); score != 0 {
+	if score := New().Evaluate(pos); score != 0 {
 		t.Errorf("expected 0, got %v", score)
 	}
 }
@@ -161,13 +163,15 @@ func TestPhaseIsClampedToMaxPhase(t *testing.T) {
 		t.Fatalf("failed to parse FEN: %v", err)
 	}
 
-	before := Evaluate(pos)
+	e := New()
+
+	before := e.Evaluate(pos)
 
 	saved := pieceSquareTablesEndGame
 	defer func() { pieceSquareTablesEndGame = saved }()
 	pieceSquareTablesEndGame[board.White][board.King][board.E3] += 1000
 
-	if after := Evaluate(pos); after != before {
+	if after := e.Evaluate(pos); after != before {
 		t.Errorf("endgame table affected the score at phase above maxPhase: %v became %v", before, after)
 	}
 }
@@ -226,7 +230,9 @@ func TestKingSafetyFavoursTheAttackingSide(t *testing.T) {
 			t.Fatalf("failed to parse FEN %q: %v", test.fen, err)
 		}
 
-		score := Evaluate(pos)
+		e := New()
+
+		score := e.Evaluate(pos)
 		if test.favoured == board.White && score <= 0 {
 			t.Errorf("%s: white has the attack but scores %v", test.fen, score)
 		}
@@ -290,9 +296,121 @@ func TestKingShelterPenalty(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		calculatedPenalty := calculateKingShelterPenalty(test.king, board.BitboardFromSquares(test.pawns...))
+		calculatedPenalty := calculateKingShelterAndStormPenalty(test.king, board.BitboardFromSquares(test.pawns...), 0)
 		if calculatedPenalty != test.penalty {
 			t.Errorf("king %v with pawns %v: expected penalty %d, got %d", test.king, test.pawns, test.penalty, calculatedPenalty)
+		}
+	}
+}
+
+func TestKingShelterAndStormPenalty(t *testing.T) {
+	tests := []struct {
+		king       board.Square
+		pawns      []board.Square
+		enemyPawns []board.Square
+		penalty    int16
+	}{
+		{
+			king:    board.G1,
+			pawns:   []board.Square{board.F2, board.G2, board.H2},
+			penalty: 0,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.G2, board.H2},
+			enemyPawns: []board.Square{board.G3},
+			penalty:    5,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.H2},
+			enemyPawns: []board.Square{board.G3},
+			penalty:    50,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.G2, board.H2},
+			enemyPawns: []board.Square{board.G4},
+			penalty:    10,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.G2, board.H2},
+			enemyPawns: []board.Square{board.G5},
+			penalty:    5,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.G2, board.H2},
+			enemyPawns: []board.Square{board.G6},
+			penalty:    0,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.H2},
+			enemyPawns: []board.Square{board.G2},
+			penalty:    60,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.G2, board.H2},
+			enemyPawns: []board.Square{board.F3, board.H3},
+			penalty:    10,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.G2, board.H2},
+			enemyPawns: []board.Square{board.F4, board.G4, board.H4},
+			penalty:    30,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.G2, board.H2},
+			enemyPawns: []board.Square{board.C3},
+			penalty:    0,
+		},
+		{
+			king:       board.H1,
+			pawns:      []board.Square{board.F2, board.G2, board.H2},
+			enemyPawns: []board.Square{board.F3, board.G3, board.H3},
+			penalty:    15,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.G2, board.H2},
+			enemyPawns: []board.Square{board.G4, board.G5},
+			penalty:    10,
+		},
+		{
+			king:       board.G3,
+			pawns:      []board.Square{board.F4, board.G4, board.H4},
+			enemyPawns: []board.Square{board.G2},
+			penalty:    60,
+		},
+		{
+			king:       board.G1,
+			pawns:      []board.Square{board.F2, board.G2, board.G3, board.H2},
+			enemyPawns: []board.Square{board.G4},
+			penalty:    3,
+		},
+		{
+			king:       board.G3,
+			pawns:      []board.Square{board.G4, board.H4},
+			enemyPawns: []board.Square{board.F3},
+			penalty:    70,
+		},
+		{
+			king:       board.G3,
+			pawns:      []board.Square{board.G4, board.H4},
+			enemyPawns: []board.Square{board.F4},
+			penalty:    80,
+		},
+	}
+
+	for _, test := range tests {
+		calculatedPenalty := calculateKingShelterAndStormPenalty(test.king, board.BitboardFromSquares(test.pawns...), board.BitboardFromSquares(test.enemyPawns...))
+		if calculatedPenalty != test.penalty {
+			t.Errorf("king %v with pawns %v and enemy pawns %v: expected penalty %d, got %d", test.king, test.pawns, test.enemyPawns, test.penalty, calculatedPenalty)
 		}
 	}
 }

@@ -316,8 +316,8 @@ Each of these is one idea, added and SPRT-tested individually. **Never two at on
 - [x] Killer moves and history heuristic
 - [x] Null move pruning
 - [x] King safety: zones
-- [ ] King safety: shelter
-- [ ] King safety: storm
+- [x] King safety: shelter
+- [x] King safety: storm
 - [ ] King safety: safe checks
 - [ ] Principal variation search (null-window re-search)
 - [ ] Late move reductions

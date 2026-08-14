@@ -161,9 +161,17 @@ func unopposedPawns(colour board.Colour, pawns, enemyPawns board.Bitboard) board
 	return pawns &^ northFill(enemyPawns)
 }
 
-func Evaluate(p *board.Position) Score {
-	var scoreMidGame Score
-	var scoreEndGame Score
+type Evaluator struct {
+	pawnsTable pawnsTable
+}
+
+func New() *Evaluator {
+	return &Evaluator{
+		pawnsTable: newPawnsTable(),
+	}
+}
+
+func (e *Evaluator) Evaluate(p *board.Position) Score {
 	var sq board.Square
 
 	occ := p.Occupancy()
@@ -173,54 +181,79 @@ func Evaluate(p *board.Position) Score {
 	whitePawns := p.Pieces(board.White, board.Pawn)
 	blackPawns := p.Pieces(board.Black, board.Pawn)
 
-	doubledWhitePawns := doubledPawns(board.White, whitePawns)
-	doubledBlackPawns := doubledPawns(board.Black, blackPawns)
-
-	scoreMidGame += Score((doubledWhitePawns.Count() - doubledBlackPawns.Count()) * doubledPawnMG)
-	scoreEndGame += Score((doubledWhitePawns.Count() - doubledBlackPawns.Count()) * doubledPawnEG)
-
-	isolatedWhitePawns := isolatedPawns(whitePawns)
-	isolatedBlackPawns := isolatedPawns(blackPawns)
-
-	passedWhitePawns := passedPawns(board.White, whitePawns, blackPawns)
-	passedBlackPawns := passedPawns(board.Black, blackPawns, whitePawns)
-
-	backwardWhitePawns := backwardPawns(board.White, whitePawns, blackPawns)
-	backwardBlackPawns := backwardPawns(board.Black, blackPawns, whitePawns)
-
-	scoreMidGame += Score((backwardWhitePawns.Count() - backwardBlackPawns.Count()) * backwardPawnMG)
-	scoreEndGame += Score((backwardWhitePawns.Count() - backwardBlackPawns.Count()) * backwardPawnEG)
-
-	// a backward pawn on a file with no enemy pawn ahead of it is the one a rook
-	// can sit opposite, so it takes an extra penalty on top
-	unopposedWhitePawns := backwardWhitePawns & unopposedPawns(board.White, whitePawns, blackPawns)
-	unopposedBlackPawns := backwardBlackPawns & unopposedPawns(board.Black, blackPawns, whitePawns)
-
-	scoreMidGame += Score((unopposedWhitePawns.Count() - unopposedBlackPawns.Count()) * unopposedPawnMG)
-	scoreEndGame += Score((unopposedWhitePawns.Count() - unopposedBlackPawns.Count()) * unopposedPawnEG)
-
-	for passedWhitePawns != 0 {
-		sq, passedWhitePawns = passedWhitePawns.PopSquare()
-		scoreMidGame += Score(passedWhitePawnsMG[sq.Rank()])
-		scoreEndGame += Score(passedWhitePawnsEG[sq.Rank()])
-	}
-	for passedBlackPawns != 0 {
-		sq, passedBlackPawns = passedBlackPawns.PopSquare()
-		scoreMidGame -= Score(passedBlackPawnsMG[sq.Rank()])
-		scoreEndGame -= Score(passedBlackPawnsEG[sq.Rank()])
-	}
-
-	scoreMidGame += Score((isolatedWhitePawns.Count() - isolatedBlackPawns.Count()) * isolatedPawnMG)
-	scoreEndGame += Score((isolatedWhitePawns.Count() - isolatedBlackPawns.Count()) * isolatedPawnEG)
-
 	whitePieces := p.PiecesByColour(board.White)
 	blackPieces := p.PiecesByColour(board.Black)
 
 	whiteKing := p.KingSquare(board.White)
 	blackKing := p.KingSquare(board.Black)
 
-	scoreMidGame -= Score(calculateKingShelterPenalty(whiteKing, whitePawns))
-	scoreMidGame += Score(calculateKingShelterPenalty(blackKing.FlipVertical(), blackPawns.FlipVertical()))
+	pawnEntry, ok := e.pawnsTable.probe(whitePawns, blackPawns)
+	if !ok {
+		var pawnScoreMidGame Score
+		var pawnScoreEndGame Score
+		doubledWhitePawns := doubledPawns(board.White, whitePawns)
+		doubledBlackPawns := doubledPawns(board.Black, blackPawns)
+
+		pawnScoreMidGame += Score((doubledWhitePawns.Count() - doubledBlackPawns.Count()) * doubledPawnMG)
+		pawnScoreEndGame += Score((doubledWhitePawns.Count() - doubledBlackPawns.Count()) * doubledPawnEG)
+
+		isolatedWhitePawns := isolatedPawns(whitePawns)
+		isolatedBlackPawns := isolatedPawns(blackPawns)
+
+		passedWhitePawns := passedPawns(board.White, whitePawns, blackPawns)
+		passedBlackPawns := passedPawns(board.Black, blackPawns, whitePawns)
+
+		backwardWhitePawns := backwardPawns(board.White, whitePawns, blackPawns)
+		backwardBlackPawns := backwardPawns(board.Black, blackPawns, whitePawns)
+
+		pawnScoreMidGame += Score((backwardWhitePawns.Count() - backwardBlackPawns.Count()) * backwardPawnMG)
+		pawnScoreEndGame += Score((backwardWhitePawns.Count() - backwardBlackPawns.Count()) * backwardPawnEG)
+
+		// a backward pawn on a file with no enemy pawn ahead of it is the one a rook
+		// can sit opposite, so it takes an extra penalty on top
+		unopposedWhitePawns := backwardWhitePawns & unopposedPawns(board.White, whitePawns, blackPawns)
+		unopposedBlackPawns := backwardBlackPawns & unopposedPawns(board.Black, blackPawns, whitePawns)
+
+		pawnScoreMidGame += Score((unopposedWhitePawns.Count() - unopposedBlackPawns.Count()) * unopposedPawnMG)
+		pawnScoreEndGame += Score((unopposedWhitePawns.Count() - unopposedBlackPawns.Count()) * unopposedPawnEG)
+
+		for passedWhitePawns != 0 {
+			sq, passedWhitePawns = passedWhitePawns.PopSquare()
+			pawnScoreMidGame += Score(passedWhitePawnsMG[sq.Rank()])
+			pawnScoreEndGame += Score(passedWhitePawnsEG[sq.Rank()])
+		}
+		for passedBlackPawns != 0 {
+			sq, passedBlackPawns = passedBlackPawns.PopSquare()
+			pawnScoreMidGame -= Score(passedBlackPawnsMG[sq.Rank()])
+			pawnScoreEndGame -= Score(passedBlackPawnsEG[sq.Rank()])
+		}
+
+		pawnScoreMidGame += Score((isolatedWhitePawns.Count() - isolatedBlackPawns.Count()) * isolatedPawnMG)
+		pawnScoreEndGame += Score((isolatedWhitePawns.Count() - isolatedBlackPawns.Count()) * isolatedPawnEG)
+
+		pawnEntry.whitePawns = whitePawns
+		pawnEntry.blackPawns = blackPawns
+		pawnEntry.kingSquare[0] = 0xFF
+		pawnEntry.kingSquare[1] = 0xFF
+		pawnEntry.midGameScore = pawnScoreMidGame
+		pawnEntry.endGameScore = pawnScoreEndGame
+	}
+
+	if pawnEntry.kingSquare[board.White] != byte(whiteKing) {
+		whitePenalty := Score(calculateKingShelterAndStormPenalty(whiteKing, whitePawns, blackPawns))
+		pawnEntry.shelter[board.White] = int16(whitePenalty)
+		pawnEntry.kingSquare[board.White] = byte(whiteKing)
+	}
+
+	if pawnEntry.kingSquare[board.Black] != byte(blackKing) {
+		blackPenalty := Score(calculateKingShelterAndStormPenalty(blackKing.FlipVertical(), blackPawns.FlipVertical(), whitePawns.FlipVertical()))
+		pawnEntry.shelter[board.Black] = int16(blackPenalty)
+		pawnEntry.kingSquare[board.Black] = byte(blackKing)
+	}
+
+	shelterPenaltyMidGame := Score(pawnEntry.shelter[board.White] - pawnEntry.shelter[board.Black])
+	scoreMidGame := pawnEntry.midGameScore - shelterPenaltyMidGame
+	scoreEndGame := pawnEntry.endGameScore
 
 	// white pieces attacking the black king
 	whiteKingAttackers := int16(0)
@@ -319,7 +352,7 @@ func Evaluate(p *board.Position) Score {
 }
 
 // for each square, a bitboard of the squares ahead of it (north)
-var ranksFrom [8]board.Bitboard
+var ranksFrom [9]board.Bitboard
 
 func init() {
 	for rank := board.Rank1; rank <= board.Rank8; rank++ {
@@ -328,28 +361,59 @@ func init() {
 }
 
 // done from the point of view of white - we flip on the way in
-func calculateKingShelterPenalty(king board.Square, friendlyPawns board.Bitboard) int16 {
+func calculateKingShelterAndStormPenalty(king board.Square, friendlyPawns, enemyPawns board.Bitboard) int16 {
 	clampedFile := min(max(king.File(), board.FileB), board.FileG)
+
 	rank := king.Rank()
+
 	penalty := int16(0)
 	for file := clampedFile - 1; file <= clampedFile+1; file++ {
 		shelterPawns := friendlyPawns & ranksFrom[rank] & file.Mask()
 		// no pawns on this file on or ahead of the kings rank
+		var blocking board.Rank
 		if shelterPawns == 0 {
 			penalty += 30
-			continue
+		} else {
+			nearestPawn, _ := shelterPawns.PopSquare()
+			blocking = nearestPawn.Rank()
+			switch blocking {
+			case board.Rank2:
+				// nothing to do, no penalty if king is protected nicely
+			case board.Rank3:
+				penalty += 10
+			case board.Rank4:
+				penalty += 20
+			default:
+				penalty += 30
+			}
 		}
-		nearestPawn, _ := shelterPawns.PopSquare()
-		switch nearestPawn.Rank() {
-		case board.Rank2:
-			// nothing to do, no penalty if king is protected nicely
-		case board.Rank3:
-			penalty += 10
-		case board.Rank4:
-			penalty += 20
-		default:
-			penalty += 30
+		stormingPawns := enemyPawns & ranksFrom[rank+1] & file.Mask()
+		if stormingPawns != 0 {
+			nearestStormer, _ := stormingPawns.PopSquare()
+			stormingRank := nearestStormer.Rank()
+			if nearestStormer.Bitboard().South()&shelterPawns != 0 {
+				switch stormingRank {
+				case board.Rank3:
+					penalty += 5
+				case board.Rank4:
+					penalty += 3
+				case board.Rank5:
+					penalty += 1
+				}
+			} else {
+				switch stormingRank {
+				case board.Rank2:
+					penalty += 30
+				case board.Rank3:
+					penalty += 20
+				case board.Rank4:
+					penalty += 10
+				case board.Rank5:
+					penalty += 5
+				}
+			}
 		}
+
 	}
 
 	return penalty

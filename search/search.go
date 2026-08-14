@@ -19,6 +19,7 @@ type Searcher struct {
 	age              uint8
 	progressCallback func(Progress)
 	history          [16][64]int32
+	evaluator        *eval.Evaluator
 }
 
 const MaxPly = 128
@@ -55,6 +56,7 @@ func New(options ...Option) *Searcher {
 		scoreBuffers:   scoreBuffers,
 		scratchBuffers: scratchBuffers,
 		ttSizeMB:       64, // default to 64MB
+		evaluator:      eval.New(),
 	}
 
 	for _, opt := range options {
