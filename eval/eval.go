@@ -71,6 +71,16 @@ var kingAttackWeights = [7]int16{
 	board.King:        0,
 }
 
+var safeCheckWeights = [7]int16{
+	board.NoPieceType: 0,
+	board.Pawn:        0,
+	board.Knight:      1,
+	board.Bishop:      2,
+	board.Rook:        3,
+	board.Queen:       3,
+	board.King:        0,
+}
+
 var (
 	passedBlackPawnsMG []int
 	passedBlackPawnsEG []int
@@ -255,12 +265,26 @@ func (e *Evaluator) Evaluate(p *board.Position) Score {
 	scoreMidGame := pawnEntry.midGameScore - shelterPenaltyMidGame
 	scoreEndGame := pawnEntry.endGameScore
 
-	// white pieces attacking the black king
-	whiteKingAttackers := int16(0)
-	whiteKingAttackWeight := int16(0)
-	// black pieces attacking the white king
-	blackKingAttackers := int16(0)
-	blackKingAttackWeight := int16(0)
+	attackersTargetingBlackKing := int16(0)
+	attacksOnWhiteKingWeight := int16(0)
+	attackersTargetingWhiteKing := int16(0)
+	attacksOnBlackKingWeight := int16(0)
+
+	var possibleAttacksByWhite [7]board.Bitboard
+	var possibleAttacksByBlack [7]board.Bitboard
+	var allAttacksByWhite, allAttacksByWhiteTwice, allAttacksByBlack, allAttacksByBlackTwice board.Bitboard
+
+	// pawn and king attacks, hoisted out of the loop
+	allAttacksByWhite, allAttacksByWhiteTwice = pawnAttackMaps(board.White, whitePawns)
+	allAttacksByBlack, allAttacksByBlackTwice = pawnAttackMaps(board.Black, blackPawns)
+
+	whiteKingAttacks := p.AttacksWithCustomOccupancy(board.King, whiteKing, occ, board.White)
+	blackKingAttacks := p.AttacksWithCustomOccupancy(board.King, blackKing, occ, board.Black)
+
+	allAttacksByWhiteTwice |= allAttacksByWhite & whiteKingAttacks
+	allAttacksByWhite |= whiteKingAttacks
+	allAttacksByBlackTwice |= allAttacksByBlack & blackKingAttacks
+	allAttacksByBlack |= blackKingAttacks
 
 	for pt := board.Pawn; pt <= board.King; pt++ {
 
@@ -284,6 +308,10 @@ func (e *Evaluator) Evaluate(p *board.Position) Score {
 		for whitePiecesByType != 0 {
 			sq, whitePiecesByType = whitePiecesByType.PopSquare()
 			if pt > board.Pawn && pt < board.King {
+				att := p.AttacksWithCustomOccupancy(pt, sq, occ, board.White)
+				allAttacksByWhiteTwice |= allAttacksByWhite & att
+				allAttacksByWhite |= att
+				possibleAttacksByWhite[pt] |= att
 				if pt == board.Rook {
 					mask := sq.File().Mask()
 					if whitePawns&mask == 0 {
@@ -296,13 +324,11 @@ func (e *Evaluator) Evaluate(p *board.Position) Score {
 						}
 					}
 				}
-
-				att := p.AttacksWithCustomOccupancy(pt, sq, occ) &^ whitePieces
-				if hits := int16((att & kingZones[blackKing]).Count()); hits > 0 {
-					whiteKingAttackers++
-					whiteKingAttackWeight += (kingAttackWeights[pt]) * hits
+				if hits := int16(((att &^ whitePieces) & kingZones[blackKing]).Count()); hits > 0 {
+					attackersTargetingBlackKing++
+					attacksOnBlackKingWeight += (kingAttackWeights[pt]) * hits
 				}
-				mobility = int16(att.Count())
+				mobility = int16((att &^ whitePieces).Count())
 			}
 			scoreMidGame += Score((mobility * pieceMobilityWeightsMidGame[pt]) + pieceSquareTablesMidGame[board.White][pt][sq])
 			scoreEndGame += Score((mobility * pieceMobilityWeightsEndGame[pt]) + pieceSquareTablesEndGame[board.White][pt][sq])
@@ -310,6 +336,10 @@ func (e *Evaluator) Evaluate(p *board.Position) Score {
 		for blackPiecesByType != 0 {
 			sq, blackPiecesByType = blackPiecesByType.PopSquare()
 			if pt > board.Pawn && pt < board.King {
+				att := p.AttacksWithCustomOccupancy(pt, sq, occ, board.Black)
+				allAttacksByBlackTwice |= allAttacksByBlack & att
+				allAttacksByBlack |= att
+				possibleAttacksByBlack[pt] |= att
 				if pt == board.Rook {
 					mask := sq.File().Mask()
 					if blackPawns&mask == 0 {
@@ -322,25 +352,36 @@ func (e *Evaluator) Evaluate(p *board.Position) Score {
 						}
 					}
 				}
-				att := p.AttacksWithCustomOccupancy(pt, sq, occ) &^ blackPieces
-				if hits := int16((att & kingZones[whiteKing]).Count()); hits > 0 {
-					blackKingAttackers++
-					blackKingAttackWeight += (kingAttackWeights[pt]) * hits
+				if hits := int16(((att &^ blackPieces) & kingZones[whiteKing]).Count()); hits > 0 {
+					attackersTargetingWhiteKing++
+					attacksOnWhiteKingWeight += (kingAttackWeights[pt]) * hits
 				}
-				mobility = int16(att.Count())
+				mobility = int16((att &^ blackPieces).Count())
 			}
 			scoreMidGame -= Score((mobility * pieceMobilityWeightsMidGame[pt]) + pieceSquareTablesMidGame[board.Black][pt][sq])
 			scoreEndGame -= Score((mobility * pieceMobilityWeightsEndGame[pt]) + pieceSquareTablesEndGame[board.Black][pt][sq])
 		}
 	}
 
-	if whiteKingAttackers >= 2 {
-		danger := Score(whiteKingAttackWeight) * Score(whiteKingAttackers)
-		scoreMidGame += min((danger*danger)/kingDangerDivisor, kingDangerMax)
+	// danger scales by attacker count, so with none the whole term is zero
+	if attackersTargetingWhiteKing > 0 {
+		weight, anySafeCheck := calculateSafeCheckWeight(p, board.Black, whiteKing, occ,
+			&possibleAttacksByBlack, allAttacksByWhite, allAttacksByWhiteTwice, allAttacksByBlackTwice)
+		attacksOnWhiteKingWeight += weight
+		if anySafeCheck || attackersTargetingWhiteKing >= 2 {
+			danger := Score(attacksOnWhiteKingWeight) * Score(attackersTargetingWhiteKing)
+			scoreMidGame -= min((danger*danger)/kingDangerDivisor, kingDangerMax)
+		}
 	}
-	if blackKingAttackers >= 2 {
-		danger := Score(blackKingAttackWeight) * Score(blackKingAttackers)
-		scoreMidGame -= min((danger*danger)/kingDangerDivisor, kingDangerMax)
+
+	if attackersTargetingBlackKing > 0 {
+		weight, anySafeCheck := calculateSafeCheckWeight(p, board.White, blackKing, occ,
+			&possibleAttacksByWhite, allAttacksByBlack, allAttacksByBlackTwice, allAttacksByWhiteTwice)
+		attacksOnBlackKingWeight += weight
+		if anySafeCheck || attackersTargetingBlackKing >= 2 {
+			danger := Score(attacksOnBlackKingWeight) * Score(attackersTargetingBlackKing)
+			scoreMidGame += min((danger*danger)/kingDangerDivisor, kingDangerMax)
+		}
 	}
 	phase = min(maxPhase, phase)
 	score := (scoreMidGame*(Score(phase)) + scoreEndGame*(Score(maxPhase-phase))) / maxPhase
@@ -349,6 +390,43 @@ func (e *Evaluator) Evaluate(p *board.Position) Score {
 		score = -score
 	}
 	return score
+}
+
+// a square takes at most one pawn from each diagonal, so the two shifts
+// intersect to exactly the doubly attacked squares
+func pawnAttackMaps(colour board.Colour, pawns board.Bitboard) (all, twice board.Bitboard) {
+	east, west := pawns.NorthEast(), pawns.NorthWest()
+	if colour == board.Black {
+		east, west = pawns.SouthEast(), pawns.SouthWest()
+	}
+	return east | west, east & west
+}
+
+// squares an attacker can check from without being taken - either the defender
+// does not cover them, or it covers them once and we hit them twice
+func calculateSafeCheckWeight(p *board.Position, attacker board.Colour, king board.Square, occ board.Bitboard,
+	attackerReach *[7]board.Bitboard, defenderAttacks, defenderAttacksTwice, attackerAttacksTwice board.Bitboard) (int16, bool) {
+
+	attackerPieces := p.PiecesByColour(attacker)
+
+	rookChecks := p.AttacksWithCustomOccupancy(board.Rook, king, occ, attacker) &^ attackerPieces
+	bishopChecks := p.AttacksWithCustomOccupancy(board.Bishop, king, occ, attacker) &^ attackerPieces
+	knightChecks := p.AttacksWithCustomOccupancy(board.Knight, king, occ, attacker) &^ attackerPieces
+	queenChecks := rookChecks | bishopChecks
+
+	safe := ^defenderAttacks | ((defenderAttacks &^ defenderAttacksTwice) & attackerAttacksTwice)
+
+	rookChecks &= safe & attackerReach[board.Rook]
+	bishopChecks &= safe & attackerReach[board.Bishop]
+	knightChecks &= safe & attackerReach[board.Knight]
+	queenChecks &= safe & attackerReach[board.Queen]
+
+	weight := int16(rookChecks.Count())*safeCheckWeights[board.Rook] +
+		int16(bishopChecks.Count())*safeCheckWeights[board.Bishop] +
+		int16(knightChecks.Count())*safeCheckWeights[board.Knight] +
+		int16(queenChecks.Count())*safeCheckWeights[board.Queen]
+
+	return weight, rookChecks|bishopChecks|knightChecks|queenChecks != 0
 }
 
 // for each square, a bitboard of the squares ahead of it (north)
