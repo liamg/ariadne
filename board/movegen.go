@@ -540,5 +540,5 @@ func (p *Position) IsPseudoLegalMove(move Move) bool {
 		return false
 	}
 
-	return p.AttacksWithCustomOccupancy(piece.Type(), move.From(), p.Occupancy())&move.To().Bitboard() != 0
+	return p.AttacksWithCustomOccupancy(piece.Type(), move.From(), p.Occupancy(), 0)&move.To().Bitboard() != 0
 }

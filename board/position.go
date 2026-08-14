@@ -571,14 +571,14 @@ func (p *Position) IsDrawByRepetition() bool {
 	return false
 }
 
-func (p *Position) Attacks(pieceType PieceType, sq Square) Bitboard {
-	return p.AttacksWithCustomOccupancy(pieceType, sq, p.Occupancy())
+func (p *Position) Attacks(pieceType PieceType, sq Square, colour Colour) Bitboard {
+	return p.AttacksWithCustomOccupancy(pieceType, sq, p.Occupancy(), colour)
 }
 
-func (p *Position) AttacksWithCustomOccupancy(pieceType PieceType, sq Square, occ Bitboard) Bitboard {
+func (p *Position) AttacksWithCustomOccupancy(pieceType PieceType, sq Square, occ Bitboard, colour Colour) Bitboard {
 	switch pieceType {
 	case Pawn:
-		panic("pawn attacks require colour, use pawnAttacks[colour][square] instead")
+		return pawnAttacks[colour][sq]
 	case Knight:
 		return knightAttacks[sq]
 	case Bishop:
