@@ -3,6 +3,7 @@ package uci
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/liamg/ariadne/board"
@@ -11,12 +12,13 @@ import (
 )
 
 type engine struct {
-	mu        sync.Mutex
-	options   engineOptions
-	searcher  *search.Searcher
-	position  *board.Position
-	ctxCancel func()
-	searching bool
+	mu            sync.Mutex
+	options       engineOptions
+	searcher      *search.Searcher
+	position      *board.Position
+	ctxCancel     func()
+	searching     bool
+	ponderHitChan chan struct{}
 }
 
 func newEngine(r responder) *engine {
@@ -48,13 +50,23 @@ func (e *engine) reportProgress(r responder) func(progress search.Progress) {
 			scoreStr = fmt.Sprintf("cp %d", progress.Score)
 		}
 
-		r.sendf("info depth %d seldepth %d score %s nodes %d nps %d time %d",
+		var pv string
+		if len(progress.PV) > 0 {
+			pvMoves := make([]string, len(progress.PV))
+			for i, move := range progress.PV {
+				pvMoves[i] = move.String()
+			}
+			pv = fmt.Sprintf(" pv %s", strings.Join(pvMoves, " "))
+		}
+
+		r.sendf("info depth %d seldepth %d score %s nodes %d nps %d time %d%s",
 			progress.Depth,
 			progress.SelDepth,
 			scoreStr,
 			progress.NodeCount,
 			1000*progress.NodeCount/max(1, progress.ElapsedMS),
 			progress.ElapsedMS,
+			pv,
 		)
 	}
 }
@@ -96,11 +108,17 @@ func (e *engine) goSearch(ctx context.Context, limits search.Limits) (search.Res
 		return search.Result{}, fmt.Errorf("searcher or position is nil")
 	}
 	e.searching = true
+	e.ponderHitChan = make(chan struct{})
+	phc := e.ponderHitChan
 	pos := e.position
 	searcher := e.searcher
 	e.mu.Unlock()
-	result := searcher.Search(ctx, pos, limits)
+	result := searcher.Search(ctx, pos, limits, phc)
 	e.stopSearch()
+	e.mu.Lock()
+	e.searching = false
+	e.ponderHitChan = nil
+	e.mu.Unlock()
 	return result, nil
 }
 
@@ -110,6 +128,14 @@ func (e *engine) stopSearch() {
 	if e.ctxCancel != nil {
 		e.ctxCancel()
 		e.ctxCancel = nil
-		e.searching = false
+	}
+}
+
+func (e *engine) ponderHit() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.ponderHitChan != nil {
+		close(e.ponderHitChan)
+		e.ponderHitChan = nil
 	}
 }

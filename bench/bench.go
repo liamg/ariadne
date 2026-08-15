@@ -75,6 +75,6 @@ func benchPosition(ctx context.Context, pos *board.Position, depth int) int64 {
 	s := search.New(
 		search.WithTranspositionTableSizeInMegaBytes(ttMB),
 	)
-	result := s.Search(ctx, pos, search.Limits{Depth: depth})
+	result := s.Search(ctx, pos, search.Limits{Depth: depth}, nil)
 	return int64(result.NodeCount)
 }

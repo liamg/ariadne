@@ -79,8 +79,7 @@ func init() {
 					}
 				}
 			case "ponder":
-				// TODO: support pondering!
-				r.debug("pondering is not yet supported")
+				limits.Ponder = true
 			case "mate":
 				if i+1 < len(fields) {
 					i++
@@ -90,6 +89,7 @@ func init() {
 				}
 			case "infinite":
 				limits.Depth = 0 // go deep to find mate
+				limits.Infinite = true
 			default:
 				r.debugf("unknown go option: %s", strings.Join(fields[i:], " "))
 			}
@@ -105,7 +105,11 @@ func init() {
 				// otherwise fall through and emit a null move
 			}
 
-			r.sendf("bestmove %s", result.BestMove)
+			if len(result.PV) > 1 {
+				r.sendf("bestmove %s ponder %s", result.BestMove, result.PV[1])
+			} else {
+				r.sendf("bestmove %s", result.BestMove)
+			}
 		}()
 
 		return nil

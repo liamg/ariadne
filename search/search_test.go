@@ -103,13 +103,13 @@ func TestSearch(t *testing.T) {
 			}
 
 			searcher := New()
-			result := searcher.Search(t.Context(), pos, Limits{Depth: tt.depth})
+			result := searcher.Search(t.Context(), pos, Limits{Depth: tt.depth}, nil)
 			if result.BestMove.String() != tt.expectedMove {
 				t.Errorf("expected best move %s, got %s", tt.expectedMove, result.BestMove.String())
 			}
 
 			// reuse the same searcher and ensure result is the same
-			result2 := searcher.Search(t.Context(), pos, Limits{Depth: tt.depth})
+			result2 := searcher.Search(t.Context(), pos, Limits{Depth: tt.depth}, nil)
 			if result.BestMove != result2.BestMove {
 				t.Errorf("expected best move to be the same on reuse, got %s != %s", result.BestMove.String(), result2.BestMove.String())
 			}
@@ -133,7 +133,7 @@ func TestSearchWithExpiredContext(t *testing.T) {
 	cancel()
 
 	searcher := New()
-	result := searcher.Search(ctx, pos, Limits{Depth: 6})
+	result := searcher.Search(ctx, pos, Limits{Depth: 6}, nil)
 
 	if result.BestMove == board.NullMove {
 		t.Errorf("expected best move to be set even with expired context, got %s", result.BestMove.String())
@@ -156,7 +156,7 @@ func TestCancelledSearchDoesNotCorruptPosition(t *testing.T) {
 	defer cancel()
 
 	searcher := New()
-	result := searcher.Search(ctx, pos, Limits{Depth: 20})
+	result := searcher.Search(ctx, pos, Limits{Depth: 20}, nil)
 
 	if result.BestMove == board.NullMove {
 		t.Errorf("expected best move to be set even with expired context, got %s", result.BestMove.String())
@@ -208,7 +208,7 @@ func TestSearchWithPlyRelativeScore(t *testing.T) {
 			}
 
 			searcher := New()
-			result := searcher.Search(t.Context(), pos, Limits{Depth: tt.depth})
+			result := searcher.Search(t.Context(), pos, Limits{Depth: tt.depth}, nil)
 
 			if result.Score != tt.expectedScore {
 				t.Errorf("expected score %d, got %d", tt.expectedScore, result.Score)
@@ -243,11 +243,11 @@ func BenchmarkSearch(b *testing.B) {
 	}
 
 	searcher := New()
-	_ = searcher.Search(b.Context(), pos, Limits{Depth: 5})
+	_ = searcher.Search(b.Context(), pos, Limits{Depth: 5}, nil)
 	b.ResetTimer()
 	var nc uint64
 	for b.Loop() {
-		result := searcher.Search(b.Context(), pos, Limits{Depth: 5})
+		result := searcher.Search(b.Context(), pos, Limits{Depth: 5}, nil)
 		nc += result.NodeCount
 	}
 	b.ReportMetric(float64(nc)/b.Elapsed().Seconds(), "nodes/s")

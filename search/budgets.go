@@ -11,6 +11,11 @@ type Budgets struct {
 func deriveBudgets(limits Limits, sideToMove board.Colour) Budgets {
 	b := Budgets{}
 
+	if limits.Infinite {
+		b.Unlimited = true
+		return b
+	}
+
 	if limits.MoveTimeMS > 0 {
 		b.Soft = max(limits.MoveTimeMS-limits.MoveOverheadMS, 1)
 		b.Hard = b.Soft
