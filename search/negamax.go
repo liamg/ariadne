@@ -61,8 +61,10 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 		ttMove = entry.Move
 	}
 
+	inCheck := pos.InCheck(pos.SideToMove())
+
 	// null move pruning
-	if canNull && ply > 0 && depth >= 3 && beta <= eval.Mate-eval.Score(MaxPly) && !pos.InCheck(pos.SideToMove()) && pos.HasNonPawnMaterial(pos.SideToMove()) {
+	if canNull && ply > 0 && depth >= 3 && beta <= eval.Mate-eval.Score(MaxPly) && !inCheck && pos.HasNonPawnMaterial(pos.SideToMove()) {
 		// only null move if we have non-pawn material, otherwise it can lead to zugzwang
 		undo := pos.MakeMove(board.NullMove)
 		score := -s.negamax(pos, depth-3, ply+1, -beta, -beta+1, false)
@@ -102,51 +104,80 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 			break
 		}
 		undo := pos.MakeMove(move)
-		if !pos.IsLastMoveIllegal() {
-			legalMoves++
-			// NOTE: consider not decrementing depth when the enemy is in check here, as it's a promising branch...
-			score := -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
-			if depth > 1 && s.state.Stop.Load() {
-				pos.UnmakeMove(undo)
-				if ply == 0 { // if this is the root, just take the best we have
-					return bestScore
-				}
-				return 0
-			}
-			if score > bestScore {
-				bestScore = score
-				bestMove = move
-				if ply == 0 {
-					s.state.BestMove = move
-				}
-				if bestScore >= beta {
+		if pos.IsLastMoveIllegal() {
+			pos.UnmakeMove(undo)
+			continue
+		}
+		legalMoves++
+		// NOTE: consider not decrementing depth when the enemy is in check here, as it's a promising branch...
+
+		// PVS: for non-first move, search with a null window first, then re-search if it fails
+		// for first move, use the full window straight away
+		var score eval.Score
+		if legalMoves == 1 {
+			score = -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
+		} else {
+			// reduced depth scout first
+			lmrEnabled := !inCheck && depth >= 3
+			if lmrEnabled {
+				reduction := 1 // NOTE: we should use a smarter reduction in future - let's prove the concept first
+				score = -s.negamax(pos, depth-1-reduction, ply+1, -alpha-1, -alpha, true)
+				if depth > 1 && s.state.Stop.Load() {
 					pos.UnmakeMove(undo)
-					// store killer moves for quiet moves, double pawn pushes, and castling
-					if move.IsQuietish() {
-						if move != s.state.killers[ply][0] {
-							s.state.killers[ply][1] = s.state.killers[ply][0]
-							s.state.killers[ply][0] = move
-						}
-						bonus := min(int32(depth*depth), scoreHistoryBonusCap)
-						piece := pos.PieceAt(move.From())
-						cur := s.history[piece][move.To()]
-						s.history[piece][move.To()] = cur + bonus - (cur*bonus)/scoreHistoryMax
-						for _, m := range s.scratchBuffers[ply] {
-							piece := pos.PieceAt(m.From())
-							cur = s.history[piece][m.To()]
-							s.history[piece][m.To()] = cur - bonus - (cur*bonus)/scoreHistoryMax
-						}
+					if ply == 0 { // if this is the root, just take the best we have
+						return bestScore
 					}
-					s.tt.store(pos.ZobristHash(), int16(bestScore), bestMove, depth, lowerBound, s.age, ply)
-					return bestScore
-				}
-				if bestScore > alpha {
-					alpha = bestScore
+					return 0
 				}
 			}
-			if move.IsQuietish() {
-				s.scratchBuffers[ply] = append(s.scratchBuffers[ply], move)
+			if !lmrEnabled || score > alpha {
+				score = -s.negamax(pos, depth-1, ply+1, -alpha-1, -alpha, true)
+				if score > alpha && score < beta {
+					score = -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
+				}
 			}
+		}
+
+		if depth > 1 && s.state.Stop.Load() {
+			pos.UnmakeMove(undo)
+			if ply == 0 { // if this is the root, just take the best we have
+				return bestScore
+			}
+			return 0
+		}
+		if score > bestScore {
+			bestScore = score
+			bestMove = move
+			if ply == 0 {
+				s.state.BestMove = move
+			}
+			if bestScore >= beta {
+				pos.UnmakeMove(undo)
+				// store killer moves for quiet moves, double pawn pushes, and castling
+				if move.IsQuietish() {
+					if move != s.state.killers[ply][0] {
+						s.state.killers[ply][1] = s.state.killers[ply][0]
+						s.state.killers[ply][0] = move
+					}
+					bonus := min(int32(depth*depth), scoreHistoryBonusCap)
+					piece := pos.PieceAt(move.From())
+					cur := s.history[piece][move.To()]
+					s.history[piece][move.To()] = cur + bonus - (cur*bonus)/scoreHistoryMax
+					for _, m := range s.scratchBuffers[ply] {
+						piece := pos.PieceAt(m.From())
+						cur = s.history[piece][m.To()]
+						s.history[piece][m.To()] = cur - bonus - (cur*bonus)/scoreHistoryMax
+					}
+				}
+				s.tt.store(pos.ZobristHash(), int16(bestScore), bestMove, depth, lowerBound, s.age, ply)
+				return bestScore
+			}
+			if bestScore > alpha {
+				alpha = bestScore
+			}
+		}
+		if move.IsQuietish() {
+			s.scratchBuffers[ply] = append(s.scratchBuffers[ply], move)
 		}
 		pos.UnmakeMove(undo)
 	}
