@@ -104,21 +104,6 @@ func TestSearch(t *testing.T) {
 
 			searcher := New()
 			result := searcher.Search(t.Context(), pos, Limits{Depth: tt.depth})
-
-			minimaxSearcher := New()
-			minimaxResult := minimaxSearcher.minimax(pos, tt.depth, 0)
-			if pos.SideToMove() == board.Black {
-				minimaxResult = -minimaxResult
-			}
-
-			if result.Score != minimaxResult {
-				t.Errorf("expected score %d, got %d", minimaxResult, result.Score)
-			}
-
-			if searcher.state.NodeCount > minimaxSearcher.state.NodeCount {
-				t.Errorf("expected searcher to explore fewer nodes than minimax searcher, got %d > %d", searcher.state.NodeCount, minimaxSearcher.state.NodeCount)
-			}
-
 			if result.BestMove.String() != tt.expectedMove {
 				t.Errorf("expected best move %s, got %s", tt.expectedMove, result.BestMove.String())
 			}

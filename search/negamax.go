@@ -61,8 +61,10 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 		ttMove = entry.Move
 	}
 
+	inCheck := pos.InCheck(pos.SideToMove())
+
 	// null move pruning
-	if canNull && ply > 0 && depth >= 3 && beta <= eval.Mate-eval.Score(MaxPly) && !pos.InCheck(pos.SideToMove()) && pos.HasNonPawnMaterial(pos.SideToMove()) {
+	if canNull && ply > 0 && depth >= 3 && beta <= eval.Mate-eval.Score(MaxPly) && !inCheck && pos.HasNonPawnMaterial(pos.SideToMove()) {
 		// only null move if we have non-pawn material, otherwise it can lead to zugzwang
 		undo := pos.MakeMove(board.NullMove)
 		score := -s.negamax(pos, depth-3, ply+1, -beta, -beta+1, false)
@@ -115,9 +117,24 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 		if legalMoves == 1 {
 			score = -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
 		} else {
-			score = -s.negamax(pos, depth-1, ply+1, -alpha-1, -alpha, true)
-			if score > alpha && score < beta {
-				score = -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
+			// reduced depth scout first
+			lmrEnabled := !inCheck && depth >= 3
+			if lmrEnabled {
+				reduction := 1 // NOTE: we should use a smarter reduction in future - let's prove the concept first
+				score = -s.negamax(pos, depth-1-reduction, ply+1, -alpha-1, -alpha, true)
+				if depth > 1 && s.state.Stop.Load() {
+					pos.UnmakeMove(undo)
+					if ply == 0 { // if this is the root, just take the best we have
+						return bestScore
+					}
+					return 0
+				}
+			}
+			if !lmrEnabled || score > alpha {
+				score = -s.negamax(pos, depth-1, ply+1, -alpha-1, -alpha, true)
+				if score > alpha && score < beta {
+					score = -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
+				}
 			}
 		}
 

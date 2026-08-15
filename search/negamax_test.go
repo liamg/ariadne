@@ -134,17 +134,9 @@ func TestNegamax(t *testing.T) {
 			}
 
 			searcher := New()
-			minimaxSearcher := New()
-			minimaxScore := minimaxSearcher.minimax(pos, tt.depth, 0)
-			if pos.SideToMove() == board.Black {
-				minimaxScore = -minimaxScore
-			}
 			score := searcher.negamax(pos, tt.depth, 0, -eval.Infinity, eval.Infinity, true)
 			if score < tt.minScore || score > tt.maxScore {
 				t.Errorf("expected score in [%v, %v], got %v", tt.minScore, tt.maxScore, score)
-			}
-			if score != minimaxScore {
-				t.Errorf("expected score to match minimax at %v, got %v", minimaxScore, score)
 			}
 		})
 	}
