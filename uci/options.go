@@ -76,4 +76,12 @@ var options = []option{
 			e.options.moveOverheadMS = int(v)
 		},
 	},
+	{
+		name:         "Ponder",
+		optionType:   optionTypeCheck,
+		defaultValue: false,
+		apply: func(_ *engine, _ responder, _ string) {
+			// nothing to do - this option just tells the GUI that the engine supports pondering, which it does
+		},
+	},
 }

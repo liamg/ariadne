@@ -7,6 +7,8 @@ import (
 
 // negamax returns a score from the perspective of the moving player - so a higher score means a better outcome for that player
 func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta eval.Score, canNull bool) eval.Score {
+	s.state.pvLengths[ply] = 0
+
 	if ply > 0 && pos.HalfMoveClock() >= 100 {
 		s.state.NodeCount++
 		return eval.Draw
@@ -148,9 +150,6 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 		if score > bestScore {
 			bestScore = score
 			bestMove = move
-			if ply == 0 {
-				s.state.BestMove = move
-			}
 			if bestScore >= beta {
 				pos.UnmakeMove(undo)
 				// store killer moves for quiet moves, double pawn pushes, and castling
@@ -174,6 +173,9 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 			}
 			if bestScore > alpha {
 				alpha = bestScore
+				s.state.pv[ply][0] = move
+				copy(s.state.pv[ply][1:], s.state.pv[ply+1][:s.state.pvLengths[ply+1]])
+				s.state.pvLengths[ply] = s.state.pvLengths[ply+1] + 1
 			}
 		}
 		if move.IsQuietish() {

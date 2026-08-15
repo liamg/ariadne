@@ -79,12 +79,15 @@ type Limits struct {
 	MovesBeforeControlSwitch int64
 	MoveOverheadMS           int64
 	HasTimeControl           bool
+	Infinite                 bool
+	Ponder                   bool
 }
 
 type Result struct {
 	BestMove  board.Move
 	Score     eval.Score
 	NodeCount uint64
+	PV        []board.Move
 }
 
 // State is the per-search state - reset between searches
@@ -92,9 +95,10 @@ type State struct {
 	NodeCount uint64
 	NodeLimit uint64
 	Stop      atomic.Bool
-	BestMove  board.Move
 	maxPly    int
 	killers   [MaxPly][2]board.Move
+	pv        [MaxPly + 1][MaxPly + 1]board.Move
+	pvLengths [MaxPly + 1]int
 }
 
 func (s *Searcher) Reset() {
@@ -108,12 +112,13 @@ type Progress struct {
 	Score     int64
 	NodeCount int64
 	ElapsedMS int64
+	PV        []board.Move
 }
 
 // Search finds the best move for the given position, using the given search limits.
 // It returns a Result containing the best move and its score.. The score is higher
 // for better positions for the side to move.
-func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limits) Result {
+func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limits, ponderHit <-chan struct{}) Result {
 	start := time.Now()
 
 	// reset state but leave TTs in place
@@ -128,32 +133,66 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 
 	budgets := deriveBudgets(limits, pos.SideToMove())
 
-	if !budgets.Unlimited {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(budgets.Hard)*time.Millisecond)
-		defer cancel()
-	}
-
 	var result Result
 	var score eval.Score
+	var clockOffset atomic.Int64
+
+	if limits.Ponder {
+		clockOffset.Store(-1)
+	} else {
+		clockOffset.Store(0)
+	}
 
 	cancelChan := make(chan struct{})
 	defer close(cancelChan)
 
+	// grab a pointer to the _current_ state,
+	// so we don't overwrite the state if the searcher is reused
+	state := s.state
 	go func() {
-		// grab a pointer to the _current_ state,
-		// so we don't overwrite the state if the searcher is reused
-		state := s.state
-		select {
-		case <-ctx.Done():
-			state.Stop.Store(true)
-		case <-cancelChan:
+		if limits.Ponder {
+			select {
+			case <-ctx.Done():
+				state.Stop.Store(true)
+				return
+			case <-cancelChan:
+				return
+			case <-ponderHit:
+				// start the clock, ponder hit!
+				clockOffset.Store(int64(time.Since(start)))
+			}
+		}
+
+		if budgets.Unlimited {
+			select {
+			case <-ctx.Done():
+				state.Stop.Store(true)
+				return
+			case <-cancelChan:
+				return
+			}
+		} else {
+			timer := time.NewTimer(time.Duration(budgets.Hard) * time.Millisecond)
+			defer timer.Stop()
+
+			select {
+			case <-ctx.Done():
+				state.Stop.Store(true)
+				return
+			case <-cancelChan:
+				return
+			case <-timer.C:
+				state.Stop.Store(true)
+				return
+			}
 		}
 	}()
 
 	for depth := 1; depth <= limits.Depth; depth++ {
 
-		if depth > 1 && !budgets.Unlimited && time.Since(start) > time.Duration(budgets.Soft)*time.Millisecond {
+		localClockOffset := clockOffset.Load()
+
+		if depth > 1 && !budgets.Unlimited && localClockOffset != -1 && (time.Since(start)-time.Duration(localClockOffset)).Milliseconds() > budgets.Soft {
 			break
 		}
 
@@ -162,12 +201,22 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 		if s.state.Stop.Load() {
 			if score != -eval.Infinity {
 				result.Score = score
-				result.BestMove = s.state.BestMove
+				if s.state.pvLengths[0] > 0 {
+					result.BestMove = s.state.pv[0][0]
+					pv := s.state.pv[0][:s.state.pvLengths[0]]
+					result.PV = make([]board.Move, len(pv))
+					copy(result.PV, pv)
+				}
 			}
 			break
 		}
 		result.Score = score
-		result.BestMove = s.state.BestMove
+		if s.state.pvLengths[0] > 0 {
+			result.BestMove = s.state.pv[0][0]
+			pv := s.state.pv[0][:s.state.pvLengths[0]]
+			result.PV = make([]board.Move, len(pv))
+			copy(result.PV, pv)
+		}
 
 		if s.progressCallback != nil {
 			s.progressCallback(Progress{
@@ -176,7 +225,15 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 				Score:     int64(score),
 				NodeCount: int64(s.state.NodeCount),
 				ElapsedMS: time.Since(start).Milliseconds(),
+				PV:        result.PV,
 			})
+		}
+	}
+
+	if limits.Ponder {
+		select {
+		case <-ponderHit:
+		case <-ctx.Done():
 		}
 	}
 
