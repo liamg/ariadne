@@ -51,8 +51,11 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 	var legalMoveCount int
 
 	for {
-		move, ok := picker.next()
+		move, os, ok := picker.next()
 		if !ok {
+			break
+		}
+		if !inCheck && os < scoreUnderpromotion { // band above losing capture as we add mvvLVA to losing capture score
 			break
 		}
 		undo := pos.MakeMove(move)

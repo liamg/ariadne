@@ -43,12 +43,12 @@ func (mp *movePicker) setTTMove(move board.Move) {
 	mp.ttMove = move
 }
 
-func (mp *movePicker) next() (board.Move, bool) {
+func (mp *movePicker) next() (board.Move, orderScore, bool) {
 	// if we have a tt move, return it, and remove it
 	if mp.ttMove != board.NullMove && !mp.ttUsed {
 		mp.ttUsed = true
 		if mp.pos.IsPseudoLegalMove(mp.ttMove) {
-			return mp.ttMove, true
+			return mp.ttMove, scoreTT, true
 		}
 	}
 
@@ -82,7 +82,7 @@ func (mp *movePicker) next() (board.Move, bool) {
 	}
 
 	if len(mp.moves[mp.index:]) == 0 {
-		return board.NullMove, false
+		return board.NullMove, 0, false
 	}
 
 	var highScore orderScore
@@ -99,6 +99,7 @@ func (mp *movePicker) next() (board.Move, bool) {
 	mp.moves[mp.index], mp.moves[highIndex] = mp.moves[highIndex], mp.moves[mp.index]
 
 	move := mp.moves[mp.index]
+	score := mp.scores[mp.index]
 	mp.index++
-	return move, true
+	return move, score, true
 }

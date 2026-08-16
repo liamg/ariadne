@@ -58,19 +58,19 @@ func buildSliderMagicEntries(directions []directionFunc, magicNumbers [64]uint64
 	return entries
 }
 
-// rookLookup returns the squares available to move to by a rook on the given square,
+// RookLookup returns the squares available to move to by a rook on the given square,
 // given the occupancy of the whole board. Blockers are included in the result regardless
 // of colour - callers wanting legal destinations must remove their own pieces.
-func rookLookup(sq Square, occupancy Bitboard) Bitboard {
+func RookLookup(sq Square, occupancy Bitboard) Bitboard {
 	entry := &rookSlider.magicEntries[sq]
 	index := int((uint64(occupancy&entry.mask) * entry.magic) >> entry.shift)
 	return entry.attacks[index]
 }
 
-// bishopLookup returns the squares available to move to by a bishop on the given square,
+// BishopLookup returns the squares available to move to by a bishop on the given square,
 // given the occupancy of the whole board. Blockers are included in the result regardless
 // of colour - callers wanting legal destinations must remove their own pieces.
-func bishopLookup(sq Square, occupancy Bitboard) Bitboard {
+func BishopLookup(sq Square, occupancy Bitboard) Bitboard {
 	entry := &bishopSlider.magicEntries[sq]
 	index := int((uint64(occupancy&entry.mask) * entry.magic) >> entry.shift)
 	return entry.attacks[index]

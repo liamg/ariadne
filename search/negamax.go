@@ -101,7 +101,8 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 
 	var legalMoves int
 	for {
-		move, ok := picker.next()
+		// TODO: prune based on orderScore here?
+		move, _, ok := picker.next()
 		if !ok {
 			break
 		}

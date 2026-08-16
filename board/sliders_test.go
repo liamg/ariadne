@@ -51,31 +51,31 @@ func TestLookupStartingPosition(t *testing.T) {
 			"bishop on C1",
 			C1,
 			BitboardFromSquares(B2, D2),
-			bishopLookup,
+			BishopLookup,
 		},
 		{
 			"bishop on D4",
 			D4,
 			BitboardFromSquares(B2, F2, C3, E3, C5, E5, B6, F6, A7, G7),
-			bishopLookup,
+			BishopLookup,
 		},
 		{
 			"rook on A1",
 			A1,
 			BitboardFromSquares(B1, A2),
-			rookLookup,
+			RookLookup,
 		},
 		{
 			"rook on H8",
 			H8,
 			BitboardFromSquares(G8, H7),
-			rookLookup,
+			RookLookup,
 		},
 		{
 			"rook on D4",
 			D4,
 			BitboardFromSquares(D2, D3, D5, D6, D7, A4, B4, C4, E4, F4, G4, H4),
-			rookLookup,
+			RookLookup,
 		},
 	}
 
@@ -99,13 +99,13 @@ func TestLookupWithEnumeratedOccupancies(t *testing.T) {
 		{
 			"rook",
 			rookDirections,
-			rookLookup,
+			RookLookup,
 			102400,
 		},
 		{
 			"bishop",
 			bishopDirections,
-			bishopLookup,
+			BishopLookup,
 			5248,
 		},
 	}
@@ -139,12 +139,12 @@ func TestLookupFuzz(t *testing.T) {
 		{
 			"rook",
 			rookDirections,
-			rookLookup,
+			RookLookup,
 		},
 		{
 			"bishop",
 			bishopDirections,
-			bishopLookup,
+			BishopLookup,
 		},
 	}
 

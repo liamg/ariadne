@@ -15,6 +15,8 @@ const (
 	scoreKnightPromotion orderScore = 50_000     // sometimes uniquely useful - above quiet but below captures
 	scoreHistoryMax                 = 16384
 	scoreHistoryBonusCap            = 2000
+	scoreTT              orderScore = 1_000_000
+	scoreEqualCapture    orderScore = 600_000
 )
 
 func (mp *movePicker) scoreMove(move board.Move) orderScore {
@@ -42,16 +44,12 @@ func (mp *movePicker) scoreMove(move board.Move) orderScore {
 		victim := pos.PieceAt(move.To()).Type()
 		return scoreQueenPromoBonus + mvvLva(victim, board.Pawn)
 	case board.EnPassantCapture:
-		if pos.SideToMove() == board.White {
-			victim := pos.PieceAt(pos.EnPassantSquare() - 8).Type()
-			return scoreCaptureBonus + mvvLva(victim, board.Pawn)
-		}
-		victim := pos.PieceAt(pos.EnPassantSquare() + 8).Type()
-		return scoreCaptureBonus + mvvLva(victim, board.Pawn)
+		// en passant is always pawn takes pawn, so both sides of the mvv/lva are known
+		return captureScore(see(pos, move), board.Pawn, board.Pawn)
 	case board.Capture:
 		attacker := pos.PieceAt(move.From()).Type()
 		victim := pos.PieceAt(move.To()).Type()
-		return scoreCaptureBonus + mvvLva(victim, attacker)
+		return captureScore(see(pos, move), victim, attacker)
 	case board.BishopPromotionCapture, board.RookPromotionCapture:
 		attacker := pos.PieceAt(move.From()).Type()
 		victim := pos.PieceAt(move.To()).Type()
@@ -60,6 +58,19 @@ func (mp *movePicker) scoreMove(move board.Move) orderScore {
 		return scoreUnderpromotion
 	default:
 		panic("unknown move kind")
+	}
+}
+
+// captureScore buckets a capture by its static exchange evaluation, using mvv/lva
+// only to order moves within a bucket.
+func captureScore(seeScore int32, victim, attacker board.PieceType) orderScore {
+	switch {
+	case seeScore > 0:
+		return scoreCaptureBonus + mvvLva(victim, attacker)
+	case seeScore == 0:
+		return scoreEqualCapture + mvvLva(victim, attacker)
+	default:
+		return scoreLosingCapture + mvvLva(victim, attacker)
 	}
 }
 
