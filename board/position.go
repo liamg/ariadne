@@ -391,6 +391,10 @@ func (p *Position) Pieces(colour Colour, pieceType PieceType) Bitboard {
 	return p.byType[pieceType] & p.byColour[colour]
 }
 
+func (p *Position) PiecesByType(pieceType PieceType) Bitboard {
+	return p.byType[pieceType]
+}
+
 func (p *Position) Occupancy() Bitboard {
 	return p.byColour[White] | p.byColour[Black]
 }
@@ -582,11 +586,11 @@ func (p *Position) AttacksWithCustomOccupancy(pieceType PieceType, sq Square, oc
 	case Knight:
 		return knightAttacks[sq]
 	case Bishop:
-		return bishopLookup(sq, occ)
+		return BishopLookup(sq, occ)
 	case Rook:
-		return rookLookup(sq, occ)
+		return RookLookup(sq, occ)
 	case Queen:
-		return bishopLookup(sq, occ) | rookLookup(sq, occ)
+		return BishopLookup(sq, occ) | RookLookup(sq, occ)
 	case King:
 		return kingAttacks[sq]
 	default:
@@ -601,4 +605,19 @@ func (p *Position) HasNonPawnMaterial(c Colour) bool {
 
 func (p *Position) KingSquare(c Colour) Square {
 	return p.kingSquare[c]
+}
+
+func (p *Position) AllAttackersForSquare(sq Square, occ Bitboard) Bitboard {
+	var result Bitboard
+
+	result |= knightAttacks[sq] & p.byType[Knight]
+	result |= kingAttacks[sq] & p.byType[King]
+
+	result |= pawnAttacks[White][sq] & p.byType[Pawn] & p.byColour[Black]
+	result |= pawnAttacks[Black][sq] & p.byType[Pawn] & p.byColour[White]
+
+	result |= BishopLookup(sq, occ) & (p.byType[Bishop] | p.byType[Queen])
+	result |= RookLookup(sq, occ) & (p.byType[Rook] | p.byType[Queen])
+
+	return result & occ
 }

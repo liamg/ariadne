@@ -16,12 +16,12 @@ func (p *Position) IsSquareAttacked(sq Square, by Colour) bool {
 
 	occ := p.Occupancy()
 
-	bishopRays := bishopLookup(sq, occ)
+	bishopRays := BishopLookup(sq, occ)
 	if bishopAttackers := bishopRays & p.byType[Bishop] & p.byColour[by]; bishopAttackers != 0 {
 		return true
 	}
 
-	rookRays := rookLookup(sq, occ)
+	rookRays := RookLookup(sq, occ)
 	if rookAttackers := rookRays & p.byType[Rook] & p.byColour[by]; rookAttackers != 0 {
 		return true
 	}

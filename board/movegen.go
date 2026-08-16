@@ -195,7 +195,7 @@ func (p *Position) generateSliderMoves(moves []Move, occ Bitboard) []Move {
 	var to Square
 	for bishopsAndQueens != 0 {
 		sq, bishopsAndQueens = bishopsAndQueens.PopSquare()
-		moveset := bishopLookup(sq, occ)
+		moveset := BishopLookup(sq, occ)
 		quiet := moveset &^ occ
 		attacks := moveset & enemyOcc
 		for quiet != 0 {
@@ -210,7 +210,7 @@ func (p *Position) generateSliderMoves(moves []Move, occ Bitboard) []Move {
 
 	for rooksAndQueens != 0 {
 		sq, rooksAndQueens = rooksAndQueens.PopSquare()
-		moveset := rookLookup(sq, occ)
+		moveset := RookLookup(sq, occ)
 		quiet := moveset &^ occ
 		attacks := moveset & enemyOcc
 		for quiet != 0 {
@@ -377,7 +377,7 @@ func (p *Position) generateSliderCaptures(moves []Move, occ Bitboard) []Move {
 	var to Square
 	for bishopsAndQueens != 0 {
 		sq, bishopsAndQueens = bishopsAndQueens.PopSquare()
-		moveset := bishopLookup(sq, occ)
+		moveset := BishopLookup(sq, occ)
 		attacks := moveset & enemyOcc
 		for attacks != 0 {
 			to, attacks = attacks.PopSquare()
@@ -387,7 +387,7 @@ func (p *Position) generateSliderCaptures(moves []Move, occ Bitboard) []Move {
 
 	for rooksAndQueens != 0 {
 		sq, rooksAndQueens = rooksAndQueens.PopSquare()
-		moveset := rookLookup(sq, occ)
+		moveset := RookLookup(sq, occ)
 		attacks := moveset & enemyOcc
 		for attacks != 0 {
 			to, attacks = attacks.PopSquare()

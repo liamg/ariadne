@@ -188,6 +188,33 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 		}
 	}()
 
+	// adoptRootPV copies the root PV out of the search state into result. Only
+	// valid when pvLengths[0] > 0, i.e. at least one root move raised alpha.
+	adoptRootPV := func(score eval.Score) {
+		result.Score = score
+		result.BestMove = s.state.pv[0][0]
+		pv := s.state.pv[0][:s.state.pvLengths[0]]
+		result.PV = make([]board.Move, len(pv))
+		copy(result.PV, pv)
+	}
+
+	// report always sends what is in result, never a freshly computed score, so
+	// the PV a GUI last saw can never disagree with the bestmove that follows it.
+	// fastchess warns on exactly that mismatch, and a warning invalidates a run.
+	report := func(depth int) {
+		if s.progressCallback == nil {
+			return
+		}
+		s.progressCallback(Progress{
+			Depth:     depth,
+			SelDepth:  s.state.maxPly,
+			Score:     int64(result.Score),
+			NodeCount: int64(s.state.NodeCount),
+			ElapsedMS: time.Since(start).Milliseconds(),
+			PV:        result.PV,
+		})
+	}
+
 	for depth := 1; depth <= limits.Depth; depth++ {
 
 		localClockOffset := clockOffset.Load()
@@ -199,35 +226,31 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 		// calculate best score
 		score = s.negamax(pos, depth, 0, -eval.Infinity, eval.Infinity, true)
 		if s.state.Stop.Load() {
-			if score != -eval.Infinity {
-				result.Score = score
-				if s.state.pvLengths[0] > 0 {
-					result.BestMove = s.state.pv[0][0]
-					pv := s.state.pv[0][:s.state.pvLengths[0]]
-					result.PV = make([]board.Move, len(pv))
-					copy(result.PV, pv)
-				}
+			// The iteration was cut short, so score is only a lower bound - it
+			// covers however many root moves were searched before the stop, and
+			// pv[0][0] is merely the first of those. Root alpha starts at
+			// -Infinity, so the very first root move searched always writes the
+			// PV, whether or not it is any good.
+			//
+			// Taking it unconditionally lets a move nothing has been compared
+			// against displace one that was fully searched a ply shallower, so it
+			// is only adopted when it actually beat the last completed depth. The
+			// NullMove case is depth 1 being cut short, where a partial answer
+			// still beats having no move to play.
+			if score != -eval.Infinity && s.state.pvLengths[0] > 0 &&
+				(result.BestMove == board.NullMove || score > result.Score) {
+				adoptRootPV(score)
+				report(depth)
 			}
 			break
 		}
+
 		result.Score = score
 		if s.state.pvLengths[0] > 0 {
-			result.BestMove = s.state.pv[0][0]
-			pv := s.state.pv[0][:s.state.pvLengths[0]]
-			result.PV = make([]board.Move, len(pv))
-			copy(result.PV, pv)
+			adoptRootPV(score)
 		}
 
-		if s.progressCallback != nil {
-			s.progressCallback(Progress{
-				Depth:     depth,
-				SelDepth:  s.state.maxPly,
-				Score:     int64(score),
-				NodeCount: int64(s.state.NodeCount),
-				ElapsedMS: time.Since(start).Milliseconds(),
-				PV:        result.PV,
-			})
-		}
+		report(depth)
 	}
 
 	if limits.Ponder {

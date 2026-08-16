@@ -321,7 +321,7 @@ Each of these is one idea, added and SPRT-tested individually. **Never two at on
 - [x] King safety: safe checks
 - [x] Principal variation search (null-window re-search)
 - [x] Late move reductions
-- [ ] Static exchange evaluation (SEE) for capture ordering and pruning
+- [x] Static exchange evaluation (SEE) for capture ordering and pruning
 - [ ] Futility pruning, reverse futility
 - [ ] Check extensions
 - [ ] Aspiration windows
