@@ -118,8 +118,8 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 			break
 		}
 
-		if !inCheck && ply > 0 && depth <= 6 && move.IsQuietish() {
-			threshold := (3 + (depth * depth)) / 2
+		if !inCheck && ply > 2 && depth <= 6 && move.IsQuietish() {
+			threshold := (3 + (depth * depth))
 			if quietMoveCount >= threshold {
 				continue
 			}
