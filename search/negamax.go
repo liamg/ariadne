@@ -71,7 +71,7 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 	if !inCheck && depth <= 3 && ply > 0 {
 		staticEval := s.evaluator.Evaluate(pos)
 		margin := rfpMarginPerPly * depth
-		if staticEval+eval.Score(margin) >= beta {
+		if staticEval-eval.Score(margin) >= beta {
 			return beta
 		}
 	}
