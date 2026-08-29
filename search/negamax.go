@@ -71,7 +71,7 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 	inCheck := pos.InCheck(pos.SideToMove())
 
 	var staticEval eval.Score
-	if !inCheck && ply > 0 && depth <= 3 {
+	if !inCheck && ply > 0 && depth <= 8 {
 		staticEval = s.evaluator.Evaluate(pos)
 		// reverse futility pruning
 		margin := rfpMarginPerPly * depth
