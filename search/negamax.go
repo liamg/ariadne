@@ -5,6 +5,8 @@ import (
 	"github.com/liamg/ariadne/eval"
 )
 
+const rfpMarginPerPly = 80
+
 // negamax returns a score from the perspective of the moving player - so a higher score means a better outcome for that player
 func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta eval.Score, canNull bool) eval.Score {
 	s.state.pvLengths[ply] = 0
@@ -64,6 +66,15 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 	}
 
 	inCheck := pos.InCheck(pos.SideToMove())
+
+	// reverse futility pruning
+	if !inCheck && depth <= 3 && ply > 0 {
+		staticEval := s.evaluator.Evaluate(pos)
+		margin := rfpMarginPerPly * depth
+		if staticEval-eval.Score(margin) >= beta {
+			return beta
+		}
+	}
 
 	// null move pruning
 	if canNull && ply > 0 && depth >= 3 && beta <= eval.Mate-eval.Score(MaxPly) && !inCheck && pos.HasNonPawnMaterial(pos.SideToMove()) {
