@@ -5,7 +5,10 @@ import (
 	"github.com/liamg/ariadne/eval"
 )
 
-const rfpMarginPerPly = 80
+const (
+	fpMarginPerPly  = 200
+	rfpMarginPerPly = 80
+)
 
 // negamax returns a score from the perspective of the moving player - so a higher score means a better outcome for that player
 func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta eval.Score, canNull bool) eval.Score {
@@ -67,9 +70,10 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 
 	inCheck := pos.InCheck(pos.SideToMove())
 
-	// reverse futility pruning
-	if !inCheck && depth <= 3 && ply > 0 {
-		staticEval := s.evaluator.Evaluate(pos)
+	var staticEval eval.Score
+	if !inCheck && ply > 0 && depth <= 3 {
+		staticEval = s.evaluator.Evaluate(pos)
+		// reverse futility pruning
 		margin := rfpMarginPerPly * depth
 		if staticEval-eval.Score(margin) >= beta {
 			return beta
@@ -118,10 +122,22 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 			break
 		}
 
-		if !inCheck && ply > 2 && depth <= 6 && move.IsQuietish() {
-			threshold := (3 + (depth * depth))
-			if quietMoveCount >= threshold {
-				continue
+		if !inCheck && ply > 0 && move.IsQuietish() {
+
+			// futility pruning
+			if legalMoves > 0 && depth <= 2 && alpha < eval.Mate-MaxPly {
+				margin := eval.Score(fpMarginPerPly * depth)
+				if staticEval+margin <= alpha {
+					continue
+				}
+			}
+
+			// late move pruning
+			if ply > 2 && depth <= 6 {
+				threshold := (3 + (depth * depth))
+				if quietMoveCount >= threshold {
+					continue
+				}
 			}
 		}
 
