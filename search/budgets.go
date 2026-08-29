@@ -3,9 +3,13 @@ package search
 import "github.com/liamg/ariadne/board"
 
 type Budgets struct {
-	Soft      int64
-	Hard      int64
-	Unlimited bool
+	// Soft is the amount of time that the search should aim to finish by. Fine to exceed.
+	Soft int64
+	// Hard is the maximum amount of time that the search should take. Exceeding this risks losing on time.
+	Hard int64
+	// Unlimited indicates that the search has no time limits.
+	Unlimited      bool
+	IterationStart int64
 }
 
 func deriveBudgets(limits Limits, sideToMove board.Colour) Budgets {
@@ -19,6 +23,7 @@ func deriveBudgets(limits Limits, sideToMove board.Colour) Budgets {
 	if limits.MoveTimeMS > 0 {
 		b.Soft = max(limits.MoveTimeMS-limits.MoveOverheadMS, 1)
 		b.Hard = b.Soft
+		b.IterationStart = b.Soft
 		return b
 	}
 
@@ -42,13 +47,11 @@ func deriveBudgets(limits Limits, sideToMove board.Colour) Budgets {
 		n = 25
 	}
 
-	base := (remaining / n) + (increment * 4 / 5)
-	base = min(remaining*2/5, base)
+	optimum := (remaining / n) + (increment * 4 / 5)
 
-	budget := max(base-limits.MoveOverheadMS, 1)
-
-	b.Hard = budget
-	b.Soft = budget / 2
+	b.Hard = max(min(optimum*3, remaining*2/5)-limits.MoveOverheadMS, 1)
+	b.Soft = min(optimum, b.Hard)
+	b.IterationStart = max(b.Soft/2, 1)
 
 	return b
 }
