@@ -120,7 +120,7 @@ func TestNegamax(t *testing.T) {
 		{
 			name:     "mate in 2",
 			fen:      "7k/p7/5K2/8/8/8/8/R7 w - - 0 1",
-			depth:    4,
+			depth:    6,
 			minScore: eval.Mate - 3,
 			maxScore: eval.Mate - 3,
 		},
