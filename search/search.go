@@ -219,7 +219,7 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 
 		localClockOffset := clockOffset.Load()
 
-		if depth > 1 && !budgets.Unlimited && localClockOffset != -1 && (time.Since(start)-time.Duration(localClockOffset)).Milliseconds() > budgets.Soft {
+		if depth > 1 && !budgets.Unlimited && localClockOffset != -1 && (time.Since(start)-time.Duration(localClockOffset)).Milliseconds() > budgets.IterationStart {
 			break
 		}
 
