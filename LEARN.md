@@ -321,11 +321,16 @@ Each of these is one idea, added and SPRT-tested individually. **Never two at on
 - [x] King safety: safe checks
 - [x] Principal variation search (null-window re-search)
 - [x] Late move reductions
+- [x] Late move pruning
 - [x] Static exchange evaluation (SEE) for capture ordering and pruning
 - [x] Futility pruning
 - [x] Reverse futility
-- [ ] Check extensions
-- [ ] Aspiration windows
+- [x] Transposition table probe and store inside quiescence
+- [ ] Check extensions — **tested and rejected.** The version tried extends on every check
+      inside `ply < 2*rootDepth` and disables LMR for checking moves, with no SEE, history
+      or PV filter. It measured −11 ply and failed SPRT. A filtered version is still open;
+      see the Rejected table in `TODO.md` before retrying this.
+- [x] Aspiration windows
 - [ ] Multithreading (Lazy SMP)
 
 **The theme:** almost all of these are bets. "This move is probably bad, so search it
