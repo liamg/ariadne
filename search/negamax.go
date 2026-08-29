@@ -113,11 +113,18 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 	var legalMoves int
 	var quietMoveCount int
 	for {
-		// TODO: prune based on moveScore here?
 		move, moveScore, ok := picker.next()
 		if !ok {
 			break
 		}
+
+		if !inCheck && ply > 2 && depth <= 6 && move.IsQuietish() {
+			threshold := (3 + (depth * depth))
+			if quietMoveCount >= threshold {
+				continue
+			}
+		}
+
 		undo := pos.MakeMove(move)
 		if pos.IsLastMoveIllegal() {
 			pos.UnmakeMove(undo)
