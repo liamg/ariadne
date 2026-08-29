@@ -21,6 +21,23 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 		s.state.maxPly = ply
 	}
 
+	// tt probe
+	if entry, ok := s.tt.probe(pos.ZobristHash(), ply); ok {
+		score := eval.Score(entry.Score)
+		switch entry.Bound {
+		case exact:
+			return score
+		case lowerBound:
+			if score >= beta {
+				return score
+			}
+		case upperBound:
+			if score <= alpha {
+				return score
+			}
+		}
+	}
+
 	var quietScore eval.Score
 
 	inCheck := pos.InCheck(pos.SideToMove())
@@ -29,6 +46,8 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 	} else {
 		quietScore = s.evaluator.Evaluate(pos)
 	}
+
+	alphaOrig := alpha
 
 	if quietScore >= beta {
 		return quietScore
@@ -47,6 +66,7 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 	picker := newMovePicker(genType, s.plyBuffers[ply][:0], s.scoreBuffers[ply][:0], pos, noKillers, noHistory)
 
 	bestScore := quietScore
+	var bestMove board.Move
 
 	var legalMoveCount int
 
@@ -69,8 +89,10 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 
 		if score > bestScore {
 			bestScore = score
+			bestMove = move
 			if bestScore >= beta {
 				pos.UnmakeMove(undo)
+				s.tt.store(pos.ZobristHash(), int16(bestScore), bestMove, 0, lowerBound, s.age, ply)
 				return bestScore
 			}
 			if bestScore > alpha {
@@ -81,10 +103,16 @@ func (s *Searcher) quiescence(pos *board.Position, ply int, alpha, beta eval.Sco
 		pos.UnmakeMove(undo)
 	}
 
-	// TODO: store in TT?
-
 	if inCheck && legalMoveCount == 0 {
-		return -eval.Mate + eval.Score(ply)
+		score := -eval.Mate + eval.Score(ply)
+		s.tt.store(pos.ZobristHash(), int16(score), bestMove, 0, exact, s.age, ply)
+		return score
+	}
+
+	if bestScore > alphaOrig {
+		s.tt.store(pos.ZobristHash(), int16(bestScore), bestMove, 0, exact, s.age, ply)
+	} else {
+		s.tt.store(pos.ZobristHash(), int16(bestScore), bestMove, 0, upperBound, s.age, ply)
 	}
 
 	return bestScore
