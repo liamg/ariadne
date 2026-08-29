@@ -223,14 +223,50 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 			break
 		}
 
-		// calculate best score
-		score = s.negamax(pos, depth, 0, -eval.Infinity, eval.Infinity, true)
+		prev := result.Score
+		if depth < 6 || prev >= eval.Mate-MaxPly || prev <= -eval.Mate+MaxPly {
+			// don't bother with aspiration windows for the first few iterations
+			score = s.negamax(pos, depth, 0, -eval.Infinity, eval.Infinity, true)
+		} else {
+			delta := eval.Score(32)
+			alpha := prev - delta
+			beta := prev + delta
+			count := 0
+			failHighCount := 0
+			for {
+				if count >= 4 {
+					score = s.negamax(pos, depth, 0, -eval.Infinity, eval.Infinity, true)
+					break
+				}
+				count++
+				score = s.negamax(pos, max(depth-failHighCount, 1), 0, alpha, beta, true)
+				if s.state.Stop.Load() {
+					break
+				}
+
+				if score <= alpha {
+					// fail low
+					delta += (delta / 3)
+					beta = alpha + (beta-alpha)/2
+					alpha = max(score-delta, -eval.Infinity)
+					continue
+				}
+				if score >= beta {
+					// fail high
+					failHighCount++
+					delta += (delta / 3)
+					beta = min(score+delta, eval.Infinity)
+					continue
+				}
+				break
+			}
+		}
 		if s.state.Stop.Load() {
 			// The iteration was cut short, so score is only a lower bound - it
 			// covers however many root moves were searched before the stop, and
 			// pv[0][0] is merely the first of those. Root alpha starts at
-			// -Infinity, so the very first root move searched always writes the
-			// PV, whether or not it is any good.
+			// -Infinity (outside of aspiration windows), so the very first root
+			// move searched always writes the PV, whether or not it is any good.
 			//
 			// Taking it unconditionally lets a move nothing has been compared
 			// against displace one that was fully searched a ply shallower, so it
