@@ -232,13 +232,14 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 			alpha := prev - delta
 			beta := prev + delta
 			count := 0
+			failHighCount := 0
 			for {
 				if count >= 4 {
 					score = s.negamax(pos, depth, 0, -eval.Infinity, eval.Infinity, true)
 					break
 				}
 				count++
-				score = s.negamax(pos, depth, 0, alpha, beta, true)
+				score = s.negamax(pos, max(depth-failHighCount, 1), 0, alpha, beta, true)
 				if s.state.Stop.Load() {
 					break
 				}
@@ -252,6 +253,7 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 				}
 				if score >= beta {
 					// fail high
+					failHighCount++
 					delta += (delta / 3)
 					beta = min(score+delta, eval.Infinity)
 					continue
