@@ -100,9 +100,10 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 	s.scratchBuffers[ply] = s.scratchBuffers[ply][:0]
 
 	var legalMoves int
+	var quietMoveCount int
 	for {
-		// TODO: prune based on orderScore here?
-		move, _, ok := picker.next()
+		// TODO: prune based on moveScore here?
+		move, moveScore, ok := picker.next()
 		if !ok {
 			break
 		}
@@ -112,6 +113,9 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 			continue
 		}
 		legalMoves++
+		if move.IsQuietish() {
+			quietMoveCount++
+		}
 		// NOTE: consider not decrementing depth when the enemy is in check here, as it's a promising branch...
 
 		// PVS: for non-first move, search with a null window first, then re-search if it fails
@@ -121,9 +125,12 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 			score = -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
 		} else {
 			// reduced depth scout first
-			lmrEnabled := !inCheck && depth >= 3
+			lmrEnabled := !inCheck && depth >= 3 && quietMoveCount >= 4 && move.IsQuietish()
 			if lmrEnabled {
-				reduction := 1 // NOTE: we should use a smarter reduction in future - let's prove the concept first
+				reduction := min(lmrTable[depth][quietMoveCount], depth-2)
+				if moveScore == scoreKiller1 || moveScore == scoreKiller2 {
+					reduction = max(reduction-1, 0)
+				}
 				score = -s.negamax(pos, depth-1-reduction, ply+1, -alpha-1, -alpha, true)
 				if depth > 1 && s.state.Stop.Load() {
 					pos.UnmakeMove(undo)
