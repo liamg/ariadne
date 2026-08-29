@@ -322,7 +322,8 @@ Each of these is one idea, added and SPRT-tested individually. **Never two at on
 - [x] Principal variation search (null-window re-search)
 - [x] Late move reductions
 - [x] Static exchange evaluation (SEE) for capture ordering and pruning
-- [ ] Futility pruning, reverse futility
+- [ ] Futility pruning
+- [x] Reverse futility
 - [ ] Check extensions
 - [ ] Aspiration windows
 - [ ] Multithreading (Lazy SMP)
