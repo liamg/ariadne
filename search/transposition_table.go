@@ -84,6 +84,7 @@ func (t *transpositionTable) store(key uint64, score int16, move board.Move, dep
 			// ...but only if the new result is at least as deep
 			// we don't want to overwrite valuable info with a crappy shallow search
 			if depth < int(entry.Depth) {
+				cluster[i].Birth = age
 				return
 			}
 			cluster[i] = transpositionTableEntry{
