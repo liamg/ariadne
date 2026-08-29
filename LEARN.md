@@ -324,7 +324,7 @@ Each of these is one idea, added and SPRT-tested individually. **Never two at on
 - [x] Static exchange evaluation (SEE) for capture ordering and pruning
 - [x] Futility pruning
 - [x] Reverse futility
-- [ ] Check extensions
+- [x] Check extensions
 - [ ] Aspiration windows
 - [ ] Multithreading (Lazy SMP)
 

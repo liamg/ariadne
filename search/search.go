@@ -99,6 +99,7 @@ type State struct {
 	killers   [MaxPly][2]board.Move
 	pv        [MaxPly + 1][MaxPly + 1]board.Move
 	pvLengths [MaxPly + 1]int
+	rootDepth int
 }
 
 func (s *Searcher) Reset() {
@@ -222,6 +223,8 @@ func (s *Searcher) Search(ctx context.Context, pos *board.Position, limits Limit
 		if depth > 1 && !budgets.Unlimited && localClockOffset != -1 && (time.Since(start)-time.Duration(localClockOffset)).Milliseconds() > budgets.Soft {
 			break
 		}
+
+		s.state.rootDepth = depth
 
 		// calculate best score
 		score = s.negamax(pos, depth, 0, -eval.Infinity, eval.Infinity, true)

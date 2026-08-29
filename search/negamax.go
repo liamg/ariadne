@@ -150,22 +150,26 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 		if move.IsQuietish() {
 			quietMoveCount++
 		}
-		// NOTE: consider not decrementing depth when the enemy is in check here, as it's a promising branch...
+		givesCheck := pos.InCheck(pos.SideToMove())
+		newDepth := depth - 1
+		if givesCheck && ply < 2*s.state.rootDepth {
+			newDepth++
+		}
 
 		// PVS: for non-first move, search with a null window first, then re-search if it fails
 		// for first move, use the full window straight away
 		var score eval.Score
 		if legalMoves == 1 {
-			score = -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
+			score = -s.negamax(pos, newDepth, ply+1, -beta, -alpha, true)
 		} else {
 			// reduced depth scout first
-			lmrEnabled := !inCheck && depth >= 3 && quietMoveCount >= 4 && move.IsQuietish()
+			lmrEnabled := !inCheck && !givesCheck && depth >= 3 && quietMoveCount >= 4 && move.IsQuietish()
 			if lmrEnabled {
 				reduction := min(lmrTable[depth][quietMoveCount], depth-2)
 				if moveScore == scoreKiller1 || moveScore == scoreKiller2 {
 					reduction = max(reduction-1, 0)
 				}
-				score = -s.negamax(pos, depth-1-reduction, ply+1, -alpha-1, -alpha, true)
+				score = -s.negamax(pos, newDepth-reduction, ply+1, -alpha-1, -alpha, true)
 				if depth > 1 && s.state.Stop.Load() {
 					pos.UnmakeMove(undo)
 					if ply == 0 { // if this is the root, just take the best we have
@@ -175,9 +179,9 @@ func (s *Searcher) negamax(pos *board.Position, depth int, ply int, alpha, beta 
 				}
 			}
 			if !lmrEnabled || score > alpha {
-				score = -s.negamax(pos, depth-1, ply+1, -alpha-1, -alpha, true)
+				score = -s.negamax(pos, newDepth, ply+1, -alpha-1, -alpha, true)
 				if score > alpha && score < beta {
-					score = -s.negamax(pos, depth-1, ply+1, -beta, -alpha, true)
+					score = -s.negamax(pos, newDepth, ply+1, -beta, -alpha, true)
 				}
 			}
 		}
